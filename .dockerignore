@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+data
+api/data
+**/__pycache__
+**/.pytest_cache
+api/.venv
+web/node_modules
+web/dist
+design
+*.md
+!README.md

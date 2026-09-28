@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--font-sans:var(--font-sans);--font-mono:'Geist Mono',ui-monospace,monospace;--on-accent:#fff;--overlay:var(--overlay);--code-bg:oklch(0.2 0.015 265);--code-text:oklch(0.9 0.01 265);--warn:oklch(0.75 0.14 75);--bg:oklch(0.985 0.003 260);--surface:#fff;--surface2:oklch(0.965 0.005 260);--border:oklch(0.915 0.007 260);--border-strong:oklch(0.84 0.01 260);--text:oklch(0.22 0.02 265);--muted:oklch(0.5 0.016 265);--accent:oklch(0.54 0.2 264);--accent-soft:oklch(0.95 0.028 264);--accent-text:oklch(0.47 0.2 264);--ok:oklch(0.62 0.14 155);--ok-soft:oklch(0.95 0.04 155);--ok-text:oklch(0.42 0.1 155);--warn-soft:oklch(0.96 0.05 80);--warn-text:oklch(0.47 0.1 65);--err-soft:oklch(0.95 0.03 25);--err-text:oklch(0.5 0.18 25);--hl:oklch(0.93 0.09 95);--shadow:0 1px 2px rgba(15,20,40,.04),0 10px 30px -14px rgba(15,25,60,.18)}
+[data-theme="dark"]{--overlay:rgba(0,0,0,.6);--code-bg:oklch(0.13 0.01 265);--bg:oklch(0.165 0.01 265);--surface:oklch(0.2 0.012 265);--surface2:oklch(0.245 0.013 265);--border:oklch(0.3 0.013 265);--border-strong:oklch(0.38 0.014 265);--text:oklch(0.95 0.005 265);--muted:oklch(0.72 0.012 265);--accent:oklch(0.6 0.19 264);--accent-soft:oklch(0.29 0.07 264);--accent-text:oklch(0.8 0.12 264);--ok:oklch(0.7 0.14 155);--ok-soft:oklch(0.28 0.05 155);--ok-text:oklch(0.82 0.11 155);--warn-soft:oklch(0.3 0.05 75);--warn-text:oklch(0.85 0.11 80);--err-soft:oklch(0.3 0.06 25);--err-text:oklch(0.8 0.12 25);--hl:oklch(0.45 0.09 95);--shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -12px rgba(0,0,0,.5)}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:var(--accent-text);text-decoration:none}
+a:hover{text-decoration:underline}
+input::placeholder{color:var(--muted)}
+</style>
+</helmet>
+<div style="min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px">
+<div style="position:relative;width:{{ frameW }};max-width:100%;height:100vh;margin:0 auto;overflow:hidden;border-left:{{ frameBorder }};border-right:{{ frameBorder }};background:var(--bg)">
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;height:100%;overflow:auto">
+  <div style="flex:1;display:flex;flex-direction:column;padding:28px;min-width:0">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;border-radius:8px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;font-weight:600">RC</div>
+      <div style="font-weight:600;font-size:15px">AIwithRC<span style="color:var(--muted);font-weight:500">-RAG</span></div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center">
+      <div style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.02em">{{ auth.title }}</h1>
+          <p style="margin:0;color:var(--muted);font-size:14.5px">{{ auth.sub }}</p>
+        </div>
+        <sc-if value="{{ auth.isSignUp }}" hint-placeholder-val="{{ false }}">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">Name<input placeholder="Your name" style="height:42px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;font-size:14.5px;outline:none"></label>
+        </sc-if>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">Email<input placeholder="you@company.com" style="height:42px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;font-size:14.5px;outline:none"></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500"><span style="display:flex;justify-content:space-between">Password<sc-if value="{{ auth.showForgot }}"><span style="color:var(--accent-text);font-weight:500;cursor:pointer">Forgot password?</span></sc-if></span><input type="password" placeholder="••••••••" style="height:42px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;font-size:14.5px;outline:none"></label>
+        <button onClick="{{ signIn }}" style="height:44px;border:none;border-radius:10px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer" style-hover="filter:brightness(1.08)">{{ auth.cta }}</button>
+        <div style="display:flex;justify-content:center;gap:6px;font-size:13.5px;color:var(--muted)">{{ auth.switchText }}<button onClick="{{ toggleAuth }}" style="border:none;background:none;padding:0;color:var(--accent-text);font:inherit;font-weight:500;cursor:pointer">{{ auth.switchCta }}</button></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><rect x="2" y="2" width="20" height="8" rx="2"></rect><rect x="2" y="14" width="20" height="8" rx="2"></rect></svg>Self-hosted workspace · rag.yourdomain.com</div>
+  </div>
+  <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;padding:48px;min-width:0">
+    <div style="max-width:460px;display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h2 style="margin:0;font-size:34px;line-height:1.1;font-weight:600;letter-spacing:-0.025em;text-wrap:balance">Answers you can check.</h2>
+        <p style="margin:0;font-size:16px;line-height:1.55;color:var(--muted);text-wrap:pretty">Every response links to the exact passage it came from. Your documents stay on your own server.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:13px;color:var(--muted)">What's the termination notice period?</div>
+        <div style="font-size:15px;line-height:1.65">Either party can terminate with <strong style="font-weight:600">60 days' written notice</strong> <span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:5px;background:var(--accent);color:var(--on-accent);font-family:var(--font-mono);font-size:11px;font-weight:600;vertical-align:2px">1</span></div>
+        <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;color:var(--muted)"><div style="font-family:var(--font-mono);font-size:11.5px;margin-bottom:6px">Acme_MSA_2024.pdf · p. 14</div>11.2 Termination for Convenience. <mark style="background:var(--hl);color:var(--text);padding:1px 2px;border-radius:3px">Either party may terminate this Agreement for any reason upon sixty (60) days' prior written notice.</mark></div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isShare }}" hint-placeholder-val="{{ false }}">
+<div style="height:100%;overflow:auto;background:var(--bg)">
+  <header style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:14px {{ hpad }};border-bottom:1px solid var(--border);background:var(--surface)">
+    <div style="width:26px;height:26px;border-radius:7px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:600">RC</div>
+    <div style="font-weight:600;font-size:14.5px;flex:1">AIwithRC<span style="color:var(--muted);font-weight:500">-RAG</span></div>
+    <button onClick="{{ go.chat }}" style="height:34px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer">Back to app</button>
+  </header>
+  <main style="max-width:720px;margin:0 auto;padding:44px {{ hpad }} 64px;display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:12.5px;color:var(--muted);font-weight:500">Shared answer · {{ shared.kbName }}</div>
+      <h1 style="margin:0;font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-0.02em;text-wrap:balance">{{ shared.q }}</h1>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)"><span style="padding:3px 9px;border-radius:999px;background:{{ shared.confBg }};color:{{ shared.confColor }};font-weight:500">{{ shared.confText }}</span>Answered by {{ shared.modelName }} · Sep 28, 2026</div>
+    </div>
+    <div style="font-size:17px;line-height:1.75;text-wrap:pretty"><sc-for list="{{ shared.segs }}" as="s" hint-placeholder-count="0"><sc-if value="{{ s.isText }}"><span>{{ s.t }}</span></sc-if><sc-if value="{{ s.isBold }}"><strong style="font-weight:600">{{ s.t }}</strong></sc-if><sc-if value="{{ s.isCite }}"><span style="display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 4px;margin:0 1px;border-radius:5px;background:var(--accent-soft);color:var(--accent-text);font-family:var(--font-mono);font-size:11px;font-weight:600;vertical-align:2px">{{ s.t }}</span></sc-if></sc-for></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;font-weight:600">Sources</div>
+      <sc-for list="{{ shared.sources }}" as="c" hint-placeholder-count="2">
+        <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="min-width:20px;height:20px;border-radius:5px;background:var(--accent-soft);color:var(--accent-text);font-family:var(--font-mono);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center">{{ c.n }}</span><span style="font-family:var(--font-mono);font-size:12.5px">{{ c.file }}</span><span style="font-size:12.5px;color:var(--muted)">{{ c.loc }}</span><span style="margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--muted)">{{ c.score }}</span></div>
+          <div style="font-size:14px;line-height:1.7;color:var(--muted)">{{ c.before }}<mark style="background:var(--hl);color:var(--text);padding:1px 2px;border-radius:3px">{{ c.hit }}</mark>{{ c.after }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="border-radius:16px;background:var(--accent-soft);padding:28px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:20px;font-weight:600;letter-spacing:-0.01em">Get answers like this from your own documents</div>
+        <div style="font-size:14.5px;line-height:1.6;color:var(--muted);text-wrap:pretty">AIwithRC-RAG indexes your PDFs, Word files and spreadsheets, then answers with citations to the exact passage. Self-host it free, or use the hosted version.</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <button onClick="{{ go.login }}" style="height:42px;padding:0 18px;border:none;border-radius:10px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer">Try it with your docs</button>
+        <button style="height:42px;padding:0 18px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;font-weight:500;cursor:pointer">Self-host on your server</button>
+      </div>
+    </div>
+    <div style="font-size:12.5px;color:var(--muted);text-align:center">Only this answer and its cited passages are shared. The rest of the knowledge base stays private.</div>
+  </main>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;height:100%">
+
+  <sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeDrawer }}" style="position:absolute;inset:0;background:var(--overlay);z-index:39"></div></sc-if>
+  <aside style="width:256px;flex-shrink:0;height:100%;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:{{ sbPos }};left:0;top:0;bottom:0;z-index:40;transform:{{ sbTransform }};transition:transform .2s ease">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 14px">
+      <div style="width:28px;height:28px;border-radius:8px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;font-weight:600">RC</div>
+      <div style="font-weight:600;font-size:15px">AIwithRC<span style="color:var(--muted);font-weight:500">-RAG</span></div>
+    </div>
+    <div style="padding:0 12px 12px">
+      <button onClick="{{ newChat }}" style="width:100%;height:38px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer" style-hover="filter:brightness(1.08)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 5v14M5 12h14"></path></svg>New chat</button>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+      <button onClick="{{ go.chat }}" style="display:flex;align-items:center;gap:10px;width:100%;height:36px;padding:0 10px;border:none;border-radius:8px;background:{{ nav.chat.bg }};color:{{ nav.chat.color }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--surface2)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Chat</button>
+      <button onClick="{{ go.kbs }}" style="display:flex;align-items:center;gap:10px;width:100%;height:36px;padding:0 10px;border:none;border-radius:8px;background:{{ nav.kbs.bg }};color:{{ nav.kbs.color }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--surface2)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>Knowledge bases</button>
+      <button onClick="{{ go.history }}" style="display:flex;align-items:center;gap:10px;width:100%;height:36px;padding:0 10px;border:none;border-radius:8px;background:{{ nav.history.bg }};color:{{ nav.history.color }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--surface2)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>History</button>
+      <button onClick="{{ go.keys }}" style="display:flex;align-items:center;gap:10px;width:100%;height:36px;padding:0 10px;border:none;border-radius:8px;background:{{ nav.keys.bg }};color:{{ nav.keys.color }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--surface2)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path></svg>API keys</button>
+      <button onClick="{{ go.settings }}" style="display:flex;align-items:center;gap:10px;width:100%;height:36px;padding:0 10px;border:none;border-radius:8px;background:{{ nav.settings.bg }};color:{{ nav.settings.color }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--surface2)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>Settings</button>
+    </nav>
+    <div style="padding:20px 22px 6px;font-size:12px;font-weight:500;color:var(--muted)">Recent</div>
+    <div style="display:flex;flex-direction:column;gap:1px;padding:0 12px;flex:1;overflow:auto;min-height:0">
+      <sc-for list="{{ recent }}" as="r" hint-placeholder-count="4">
+        <button onClick="{{ r.open }}" style="display:block;width:100%;padding:7px 10px;border:none;border-radius:8px;background:transparent;color:var(--text);font:inherit;font-size:13.5px;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" style-hover="background:var(--surface2)">{{ r.title }}</button>
+      </sc-for>
+    </div>
+    <div style="border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:4px">
+      <button onClick="{{ toggleTheme }}" style="display:flex;align-items:center;gap:10px;width:100%;height:34px;padding:0 10px;border:none;border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13.5px;cursor:pointer;text-align:left" style-hover="background:var(--surface2)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>{{ themeLabel }}</button>
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 10px">
+        <button onClick="{{ go.profile }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:4px 6px;margin:-4px -6px;border:none;border-radius:8px;background:{{ nav.profile.bg }};color:var(--text);font:inherit;text-align:left;cursor:pointer" style-hover="background:var(--surface2)">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0">{{ me.initials }}</div>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ me.name }}</div><div style="font-size:12px;color:var(--muted)">My profile</div></div>
+        </button>
+        <button onClick="{{ go.login }}" style="border:none;background:none;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer;padding:4px" style-hover="color:var(--err-text)">Sign out</button>
+      </div>
+    </div>
+  </aside>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;height:100%;position:relative">
+    <header style="height:56px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 {{ hpad }};border-bottom:1px solid var(--border);background:var(--surface);position:relative;z-index:22">
+      <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openDrawer }}" style="width:36px;height:36px;border:none;background:transparent;color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:-8px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button></sc-if>
+      <div style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">{{ pageTitle }}</div>
+      <sc-if value="{{ isChat }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <div style="position:relative">
+            <button onClick="{{ toggleKbMenu }}" style="height:34px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer;max-width:{{ pickerMax }}" style-hover="background:var(--surface2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ kb.name }}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;color:var(--muted)"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+            <sc-if value="{{ menuKb }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;top:40px;right:0;width:300px;max-width:88vw;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:6px;z-index:25">
+                <div style="padding:8px 10px 6px;font-size:12px;color:var(--muted);font-weight:500">Search in</div>
+                <sc-for list="{{ kbList }}" as="k" hint-placeholder-count="3">
+                  <button onClick="{{ k.select }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;border-radius:8px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer" style-hover="background:var(--surface2)">
+                    <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">{{ k.name }}</div><div style="font-size:12px;color:var(--muted)">{{ k.docs }} docs · {{ k.model }}</div></div>
+                    <span style="font-size:11px;font-weight:500;padding:2px 7px;border-radius:999px;background:{{ k.rtBg }};color:{{ k.rtColor }}">{{ k.rtLabel }}</span>
+                    <span style="width:16px;color:var(--accent-text);opacity:{{ k.checkOp }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  </button>
+                </sc-for>
+                <div style="border-top:1px solid var(--border);margin:6px 0 0;padding-top:6px"><button onClick="{{ go.kbs }}" style="width:100%;padding:8px 10px;border:none;border-radius:8px;background:transparent;color:var(--accent-text);font:inherit;font-size:13px;font-weight:500;text-align:left;cursor:pointer" style-hover="background:var(--surface2)">Manage knowledge bases</button></div>
+              </div>
+            </sc-if>
+          </div>
+          <div style="position:relative">
+            <button onClick="{{ toggleModelMenu }}" style="height:34px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer;max-width:{{ pickerMax }}" style-hover="background:var(--surface2)"><span style="width:7px;height:7px;border-radius:50%;background:{{ model.dot }};flex-shrink:0"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ model.name }}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;color:var(--muted)"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+            <sc-if value="{{ menuModel }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;top:40px;right:0;width:280px;max-width:88vw;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:6px;z-index:25">
+                <div style="padding:8px 10px 6px;font-size:12px;color:var(--muted);font-weight:500">Answer with</div>
+                <sc-for list="{{ modelList }}" as="o" hint-placeholder-count="4">
+                  <button onClick="{{ o.select }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;border-radius:8px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer" style-hover="background:var(--surface2)">
+                    <span style="width:7px;height:7px;border-radius:50%;background:{{ o.dot }}"></span>
+                    <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">{{ o.name }}</div><div style="font-size:12px;color:var(--muted)">{{ o.via }}</div></div>
+                    <span style="width:16px;color:var(--accent-text);opacity:{{ o.checkOp }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ hasThread }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openShareLast }}" style="height:34px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:var(--surface2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg><sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}"><span>Share</span></sc-if></button></sc-if>
+        </div>
+      </sc-if>
+    </header>
+    <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeMenus }}" style="position:absolute;inset:0;z-index:21"></div></sc-if>
+
+    <sc-if value="{{ isChat }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;min-height:0;display:flex;position:relative">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;min-width:0">
+
+          <sc-if value="{{ isEmptyChat }}" hint-placeholder-val="{{ true }}">
+          <div style="max-width:680px;margin:0 auto;padding:{{ emptyTop }} {{ hpad }} 40px;display:flex;flex-direction:column;gap:22px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+              <div style="display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:{{ privacy.bg }};color:{{ privacy.color }};font-size:12.5px;font-weight:500"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>{{ privacy.text }}</div>
+              <h1 style="margin:0;font-size:{{ heroSize }};line-height:1.1;font-weight:600;letter-spacing:-0.025em;text-wrap:balance">Ask your documents anything</h1>
+              <p style="margin:0;max-width:460px;color:var(--muted);font-size:15.5px;line-height:1.55;text-wrap:pretty">Answers cite the exact passage they came from, so you can check every claim.</p>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:10px 10px 10px 16px;display:flex;flex-direction:column;gap:6px">
+              <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}" placeholder="{{ placeholder }}" style="border:none;outline:none;background:transparent;font:inherit;font-size:15.5px;color:var(--text);padding:8px 0;width:100%">
+              <div style="display:flex;align-items:center;gap:8px">
+                <button onClick="{{ startQuick }}" style="height:30px;display:flex;align-items:center;gap:6px;padding:0 10px 0 8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer" style-hover="color:var(--text);background:var(--surface2)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Add file</button>
+                <div style="flex:1"></div>
+                <button onClick="{{ send }}" style="width:34px;height:34px;border:none;border-radius:10px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:{{ sendOp }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+              </div>
+            </div>
+            <sc-if value="{{ quick.none }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ startQuick }}" style="width:100%;border:1.5px dashed var(--border-strong);border-radius:14px;background:transparent;padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:left;color:var(--text);font:inherit" style-hover="border-color:var(--accent);background:var(--accent-soft)">
+                <div style="width:40px;height:40px;border-radius:10px;background:var(--accent-soft);color:var(--accent-text);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
+                <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><div style="font-size:14px;font-weight:600">Drop a document to start</div><div style="font-size:13px;color:var(--muted)">PDF, DOCX, MD, TXT, CSV or XLSX. Indexed into {{ kb.name }} in seconds.</div></div>
+              </button>
+            </sc-if>
+            <sc-if value="{{ quick.show }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:14px 16px;display:flex;align-items:center;gap:14px">
+                <div style="width:40px;height:40px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10.5px;font-weight:600;color:var(--muted);flex-shrink:0">PDF</div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px">
+                  <div style="display:flex;justify-content:space-between;gap:10px"><span style="font-size:13.5px;font-weight:500;font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ quick.name }}</span><span style="font-size:12.5px;color:{{ quick.color }};white-space:nowrap">{{ quick.pctLabel }}</span></div>
+                  <div style="height:4px;border-radius:999px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:{{ quick.w }};background:{{ quick.bar }};border-radius:999px;transition:width .35s ease"></div></div>
+                  <div style="font-size:12.5px;color:var(--muted)">{{ quick.stage }}</div>
+                </div>
+              </div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="font-size:12.5px;color:var(--muted);font-weight:500">{{ suggestLabel }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <sc-for list="{{ suggestions }}" as="g" hint-placeholder-count="3">
+                  <button onClick="{{ g.ask }}" style="padding:8px 13px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text);font:inherit;font-size:13.5px;cursor:pointer;text-align:left" style-hover="border-color:var(--accent);color:var(--accent-text)">{{ g.q }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ hasThread }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:760px;margin:0 auto;padding:28px {{ hpad }} 24px;display:flex;flex-direction:column;gap:30px">
+            <sc-for list="{{ msgs }}" as="m" hint-placeholder-count="0">
+              <div style="display:flex;flex-direction:column">
+                <sc-if value="{{ m.isUser }}"><div style="align-self:flex-end;max-width:82%;background:var(--surface2);padding:10px 15px;border-radius:16px 16px 4px 16px;font-size:15px;line-height:1.55">{{ m.text }}</div></sc-if>
+                <sc-if value="{{ m.isPending }}"><div style="display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px"><div style="width:26px;height:26px;border-radius:7px;background:var(--accent-soft);color:var(--accent-text);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></div>Searching {{ m.kbName }} for relevant passages…</div></sc-if>
+                <sc-if value="{{ m.isAnswer }}">
+                  <div style="display:flex;flex-direction:column;gap:14px">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                      <div style="width:26px;height:26px;border-radius:7px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;font-weight:600">RC</div>
+                      <span style="font-size:13px;color:var(--muted)">{{ m.modelName }}</span>
+                      <span style="font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;background:{{ m.confBg }};color:{{ m.confColor }}">{{ m.confText }}</span>
+                    </div>
+                    <div style="font-size:15.5px;line-height:1.72;text-wrap:pretty"><sc-for list="{{ m.segs }}" as="s"><sc-if value="{{ s.isText }}"><span>{{ s.t }}</span></sc-if><sc-if value="{{ s.isBold }}"><strong style="font-weight:600">{{ s.t }}</strong></sc-if><sc-if value="{{ s.isCite }}"><button onClick="{{ s.open }}" title="Show source" style="display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 4px;margin:0 1px;border-radius:5px;border:none;background:{{ s.bg }};color:{{ s.color }};font-family:var(--font-mono);font-size:11px;font-weight:600;cursor:pointer;vertical-align:2px">{{ s.t }}</button></sc-if></sc-for></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px">
+                      <sc-for list="{{ m.sources }}" as="c">
+                        <button onClick="{{ c.open }}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid {{ c.border }};background:{{ c.bg }};border-radius:9px;cursor:pointer;font:inherit;color:var(--text);max-width:100%;min-width:0" style-hover="border-color:var(--accent)">
+                          <span style="min-width:18px;height:18px;border-radius:5px;background:var(--accent-soft);color:var(--accent-text);font-family:var(--font-mono);font-size:10.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center">{{ c.n }}</span>
+                          <span style="font-family:var(--font-mono);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">{{ c.file }}</span>
+                          <span style="font-size:12px;color:var(--muted);white-space:nowrap">{{ c.page }}</span>
+                        </button>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;gap:2px;margin-left:-8px">
+                      <button onClick="{{ m.copy }}" style="height:30px;display:flex;align-items:center;gap:6px;padding:0 8px;border:none;border-radius:7px;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer" style-hover="background:var(--surface2);color:var(--text)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>{{ m.copyLabel }}</button>
+                      <button onClick="{{ m.share }}" style="height:30px;display:flex;align-items:center;gap:6px;padding:0 8px;border:none;border-radius:7px;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer" style-hover="background:var(--surface2);color:var(--text)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>Share</button>
+                      <button onClick="{{ m.regen }}" style="height:30px;display:flex;align-items:center;gap:6px;padding:0 8px;border:none;border-radius:7px;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer" style-hover="background:var(--surface2);color:var(--text)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg>Regenerate</button>
+                    </div>
+                    <sc-if value="{{ m.showFollow }}">
+                      <div style="display:flex;flex-direction:column;border-top:1px solid var(--border)">
+                        <sc-for list="{{ m.follow }}" as="f">
+                          <button onClick="{{ f.ask }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 2px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font:inherit;font-size:14px;text-align:left;cursor:pointer" style-hover="color:var(--accent-text)">{{ f.q }}<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;color:var(--muted)"><path d="M12 5v14M5 12h14"></path></svg></button>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ hasThread }}" hint-placeholder-val="{{ false }}">
+        <div style="flex-shrink:0;padding:0 {{ hpad }} 14px">
+          <div style="max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:8px">
+            <sc-if value="{{ cloudWarn }}"><div style="font-size:12.5px;padding:8px 12px;border-radius:9px;background:var(--warn-soft);color:var(--warn-text)">{{ model.name }} is a cloud model. Retrieved passages from {{ kb.name }} will be sent to {{ model.via }}.</div></sc-if>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:6px 6px 6px 16px;display:flex;align-items:center;gap:8px">
+              <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}" placeholder="Ask a follow-up…" style="flex:1;min-width:0;border:none;outline:none;background:transparent;font:inherit;font-size:15px;color:var(--text);padding:9px 0">
+              <button onClick="{{ send }}" style="width:34px;height:34px;border:none;border-radius:10px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:{{ sendOp }};flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+            </div>
+            <div style="text-align:center;font-size:12px;color:var(--muted)">{{ privacy.text }} · Check citations before relying on an answer.</div>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ srcOpen }}" hint-placeholder-val="{{ false }}">
+      <aside style="position:{{ panelPos }};top:0;right:0;bottom:0;width:{{ panelW }};flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:30;box-shadow:{{ panelShadow }}">
+        <div style="height:52px;flex-shrink:0;display:flex;align-items:center;gap:6px;padding:0 12px 0 20px;border-bottom:1px solid var(--border)">
+          <div style="font-size:14px;font-weight:600;margin-right:8px">Source</div>
+          <sc-for list="{{ srcTabs }}" as="t">
+            <button onClick="{{ t.select }}" style="width:26px;height:26px;border-radius:7px;border:none;background:{{ t.bg }};color:{{ t.color }};font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer">{{ t.n }}</button>
+          </sc-for>
+          <div style="flex:1"></div>
+          <button onClick="{{ closeSrc }}" style="width:32px;height:32px;border:none;border-radius:8px;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:var(--surface2);color:var(--text)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+        </div>
+        <div style="flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="width:38px;height:38px;border-radius:9px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--muted);flex-shrink:0">{{ src.type }}</div>
+            <div style="min-width:0;display:flex;flex-direction:column;gap:3px"><div style="font-family:var(--font-mono);font-size:13px;font-weight:500;word-break:break-all">{{ src.file }}</div><div style="font-size:12.5px;color:var(--muted)">{{ src.loc }}</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px"><span style="color:var(--muted)">Relevance</span><span style="font-family:var(--font-mono);font-weight:500">{{ src.score }}</span></div>
+            <div style="height:5px;border-radius:999px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:{{ src.w }};background:{{ src.bar }};border-radius:999px"></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:12.5px;color:var(--muted);font-weight:500">Matched passage</div>
+            <div style="background:var(--surface2);border-radius:12px;padding:16px 18px;font-size:14.5px;line-height:1.75;color:var(--muted);text-wrap:pretty">{{ src.before }}<mark style="background:var(--hl);color:var(--text);padding:1px 2px;border-radius:3px">{{ src.hit }}</mark>{{ src.after }}</div>
+          </div>
+          <div style="font-size:12.5px;color:var(--muted);line-height:1.6">Retrieved with hybrid search from {{ kb.name }}. Chunk {{ src.chunk }} of {{ src.total }}.</div>
+          <div style="display:flex;gap:8px">
+            <button style="height:36px;padding:0 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:var(--surface2)">Open document</button>
+            <button style="height:36px;padding:0 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:var(--surface2)">Copy passage</button>
+          </div>
+        </div>
+      </aside>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isKbs }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;overflow:auto">
+      <div style="max-width:1080px;margin:0 auto;padding:32px {{ hpad }} 48px;display:flex;flex-direction:column;gap:24px">
+        <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px;justify-content:space-between">
+          <div style="display:flex;flex-direction:column;gap:6px;max-width:560px"><h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.02em">Knowledge bases</h1><p style="margin:0;color:var(--muted);font-size:14.5px;line-height:1.55;text-wrap:pretty">Each knowledge base has its own documents and model. Local ones are never sent off this server.</p></div>
+          <button onClick="{{ openNewKb }}" style="height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;border:none;border-radius:10px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round"><path d="M12 5v14M5 12h14"></path></svg>New knowledge base</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
+          <sc-for list="{{ kbList }}" as="k" hint-placeholder-count="3">
+            <button onClick="{{ k.open }}" style="display:flex;flex-direction:column;gap:14px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer;min-height:170px" style-hover="border-color:var(--border-strong);box-shadow:var(--shadow)">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%"><span style="font-size:15.5px;font-weight:600">{{ k.name }}</span><span style="font-size:11.5px;font-weight:500;padding:3px 8px;border-radius:999px;background:{{ k.rtBg }};color:{{ k.rtColor }};white-space:nowrap">{{ k.rtLabel }}</span></div>
+              <div style="font-size:13.5px;color:var(--muted);line-height:1.5;flex:1">{{ k.desc }}</div>
+              <div style="display:flex;justify-content:space-between;gap:10px;width:100%;font-size:12.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px"><span>{{ k.docs }} docs · {{ k.chunks }} chunks</span><span>{{ k.updated }}</span></div>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isKb }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;overflow:auto">
+      <div style="max-width:1080px;margin:0 auto;padding:24px {{ hpad }} 48px;display:flex;flex-direction:column;gap:24px">
+        <button onClick="{{ go.kbs }}" style="align-self:flex-start;border:none;background:none;padding:0;color:var(--muted);font:inherit;font-size:13px;cursor:pointer" style-hover="color:var(--text)">← Knowledge bases</button>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-start">
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.02em">{{ kb.name }}</h1><span style="font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;background:{{ kb.rtBg }};color:{{ kb.rtColor }}">{{ kb.rtLabel }}</span></div>
+            <div style="color:var(--muted);font-size:14px">{{ kb.desc }}</div>
+            <div style="color:var(--muted);font-size:13px">{{ docStats }} · Answers with {{ kb.model }}</div>
+          </div>
+          <button onClick="{{ chatWithKb }}" style="height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;border:none;border-radius:10px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Chat with this knowledge base</button>
+        </div>
+        <button onClick="{{ upload }}" style="width:100%;border:1.5px dashed var(--border-strong);border-radius:14px;background:var(--surface);padding:30px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;color:var(--text);font:inherit" style-hover="border-color:var(--accent);background:var(--accent-soft)">
+          <div style="width:44px;height:44px;border-radius:11px;background:var(--accent-soft);color:var(--accent-text);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
+          <div style="font-size:14.5px;font-weight:600">Drop files here or click to upload</div>
+          <div style="font-size:13px;color:var(--muted)">PDF, DOCX, MD, TXT, CSV, XLSX · up to 50 MB each</div>
+        </button>
+        <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+          <div style="display:grid;grid-template-columns:{{ docCols }};gap:16px;padding:11px 18px;border-bottom:1px solid var(--border);font-size:12px;font-weight:500;color:var(--muted)"><span>Document</span><sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}"><span>Size</span></sc-if><sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}"><span>Chunks</span></sc-if><span>Status</span></div>
+          <sc-if value="{{ docsEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:32px 18px;text-align:center;color:var(--muted);font-size:13.5px">No documents yet. Upload a file to start indexing.</div></sc-if>
+          <sc-for list="{{ docs }}" as="d" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:{{ docCols }};gap:16px;align-items:center;padding:13px 18px;border-bottom:1px solid var(--border)">
+              <div style="display:flex;align-items:center;gap:11px;min-width:0">
+                <span style="width:34px;height:34px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9.5px;font-weight:600;color:var(--muted);flex-shrink:0">{{ d.type }}</span>
+                <div style="min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-mono);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.name }}</span><sc-if value="{{ d.hasError }}"><span style="font-size:12px;color:var(--err-text)">{{ d.error }}</span></sc-if></div>
+              </div>
+              <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;color:var(--muted)">{{ d.size }}</span></sc-if>
+              <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;color:var(--muted);font-family:var(--font-mono)">{{ d.chunks }}</span></sc-if>
+              <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+                <span style="font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;background:{{ d.bg }};color:{{ d.color }};white-space:nowrap">{{ d.label }}</span>
+                <sc-if value="{{ d.isProc }}"><div style="width:100%;max-width:140px;height:4px;border-radius:999px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:{{ d.w }};background:var(--accent);transition:width .35s ease"></div></div></sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;overflow:auto">
+      <div style="max-width:820px;margin:0 auto;padding:32px {{ hpad }} 48px;display:flex;flex-direction:column;gap:24px">
+        <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px;justify-content:space-between">
+          <div style="display:flex;flex-direction:column;gap:6px"><h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.02em">History</h1><p style="margin:0;color:var(--muted);font-size:14.5px">Conversations and every change made in this workspace.</p></div>
+          <button style="height:36px;display:flex;align-items:center;gap:7px;padding:0 13px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:var(--surface2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV</button>
+        </div>
+        <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;margin-bottom:-8px">
+          <sc-for list="{{ histTabs }}" as="t" hint-placeholder-count="6">
+            <button onClick="{{ t.select }}" style="display:flex;align-items:center;gap:7px;height:40px;padding:0 12px;border:none;border-bottom:2px solid {{ t.line }};background:transparent;color:{{ t.color }};font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="color:var(--text)">{{ t.label }}<span style="font-size:11.5px;padding:1px 7px;border-radius:999px;background:var(--surface2);color:var(--muted);font-family:var(--font-mono)">{{ t.count }}</span></button>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;height:42px;padding:0 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;color:var(--muted)"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input value="{{ histQ }}" onChange="{{ onHistQ }}" placeholder="{{ histPlaceholder }}" style="flex:1;border:none;outline:none;background:transparent;font:inherit;font-size:14.5px;color:var(--text)"></div>
+        <sc-for list="{{ histGroups }}" as="grp" hint-placeholder-count="2">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:12.5px;font-weight:500;color:var(--muted);padding:0 4px">{{ grp.label }}</div>
+            <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden">
+              <sc-for list="{{ grp.items }}" as="h">
+                <button onClick="{{ h.open }}" style="display:flex;align-items:center;gap:14px;width:100%;padding:13px 16px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font:inherit;text-align:left;cursor:{{ h.cursor }}" style-hover="background:var(--surface2)">
+                  <span style="width:32px;height:32px;border-radius:8px;background:{{ h.iconBg }};color:{{ h.iconColor }};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <sc-if value="{{ h.isChat }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></sc-if>
+                    <sc-if value="{{ h.isDoc }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></sc-if>
+                    <sc-if value="{{ h.isLogin }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg></sc-if>
+                    <sc-if value="{{ h.isKey }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path></svg></sc-if>
+                    <sc-if value="{{ h.isSettings }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg></sc-if>
+                  </span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis">{{ h.title }}</span><span style="font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis">{{ h.detail }}</span></div>
+                  <sc-if value="{{ h.hasTag }}"><span style="font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:999px;background:{{ h.tagBg }};color:{{ h.tagColor }};white-space:nowrap">{{ h.tag }}</span></sc-if>
+                  <span style="font-size:12.5px;color:var(--muted);white-space:nowrap;min-width:52px;text-align:right">{{ h.time }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ histEmpty }}"><div style="padding:32px;text-align:center;color:var(--muted)">Nothing matches "{{ histQ }}".</div></sc-if>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;overflow:auto">
+      <div style="max-width:820px;margin:0 auto;padding:32px {{ hpad }} 56px;display:flex;flex-direction:column;gap:28px">
+        <div style="display:flex;flex-direction:column;gap:6px"><h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.02em">Settings</h1><p style="margin:0;color:var(--muted);font-size:14.5px">Applies to every knowledge base in this workspace.</p></div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:15px;font-weight:600">Model providers</div>
+          <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface)">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:500">Ollama</div><div style="font-size:12.5px;color:var(--muted);font-family:var(--font-mono)">http://localhost:11434</div></div><span style="font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;background:var(--ok-soft);color:var(--ok-text)">Connected · 3 models</span></div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:500">Anthropic</div><div style="font-size:12.5px;color:var(--muted);font-family:var(--font-mono)">sk-ant-••••••••4f1c</div></div><span style="font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;background:var(--ok-soft);color:var(--ok-text)">Key saved</span></div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 18px"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:500">OpenAI</div><div style="font-size:12.5px;color:var(--muted)">Not connected</div></div><button style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer">Add API key</button></div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:15px;font-weight:600">Embeddings</div>
+          <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface)">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:500">Embedding model</div><div style="font-size:12.5px;color:var(--muted)">Changing this re-indexes every document.</div></div><div style="height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:var(--font-mono)">nomic-embed-text<span style="color:var(--muted);font-family:var(--font-sans)">· Local</span></div></div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 18px"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:500">Vector store</div><div style="font-size:12.5px;color:var(--muted)">Stored on this server.</div></div><div style="font-size:13px;font-family:var(--font-mono);color:var(--muted)">Chroma · 768 dims</div></div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:15px;font-weight:600">Chunking and retrieval</div>
+          <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface)">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:500">Chunk size</div><div style="font-size:12.5px;color:var(--muted)">Tokens per passage. Smaller chunks give more precise citations.</div></div><div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:9px;overflow:hidden"><button onClick="{{ num.sizeDown }}" style="width:34px;height:34px;border:none;background:var(--surface2);color:var(--text);font:inherit;font-size:16px;cursor:pointer">−</button><span style="width:64px;text-align:center;font-family:var(--font-mono);font-size:13px">{{ num.size }}</span><button onClick="{{ num.sizeUp }}" style="width:34px;height:34px;border:none;background:var(--surface2);color:var(--text);font:inherit;font-size:16px;cursor:pointer">+</button></div></div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:500">Overlap</div><div style="font-size:12.5px;color:var(--muted)">Tokens shared between neighbouring chunks.</div></div><div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:9px;overflow:hidden"><button onClick="{{ num.ovDown }}" style="width:34px;height:34px;border:none;background:var(--surface2);color:var(--text);font:inherit;font-size:16px;cursor:pointer">−</button><span style="width:64px;text-align:center;font-family:var(--font-mono);font-size:13px">{{ num.ov }}</span><button onClick="{{ num.ovUp }}" style="width:34px;height:34px;border:none;background:var(--surface2);color:var(--text);font:inherit;font-size:16px;cursor:pointer">+</button></div></div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:500">Passages per answer</div><div style="font-size:12.5px;color:var(--muted)">How many chunks are retrieved (top-k).</div></div><div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:9px;overflow:hidden"><button onClick="{{ num.kDown }}" style="width:34px;height:34px;border:none;background:var(--surface2);color:var(--text);font:inherit;font-size:16px;cursor:pointer">−</button><span style="width:64px;text-align:center;font-family:var(--font-mono);font-size:13px">{{ num.k }}</span><button onClick="{{ num.kUp }}" style="width:34px;height:34px;border:none;background:var(--surface2);color:var(--text);font:inherit;font-size:16px;cursor:pointer">+</button></div></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">Hybrid search</div><div style="font-size:12.5px;color:var(--muted)">Combine keyword (BM25) and vector search.</div></div><button onClick="{{ toggle.hybrid }}" style="width:38px;height:22px;flex-shrink:0;border-radius:999px;border:none;padding:3px;background:{{ tg.hybrid.bg }};cursor:pointer;display:flex;justify-content:{{ tg.hybrid.j }};transition:background .15s"><span style="width:16px;height:16px;border-radius:50%;background:var(--on-accent);display:block"></span></button></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:16px 18px"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">Rerank results</div><div style="font-size:12.5px;color:var(--muted)">Re-score retrieved passages before answering. Slower, more accurate.</div></div><button onClick="{{ toggle.rerank }}" style="width:38px;height:22px;flex-shrink:0;border-radius:999px;border:none;padding:3px;background:{{ tg.rerank.bg }};cursor:pointer;display:flex;justify-content:{{ tg.rerank.j }};transition:background .15s"><span style="width:16px;height:16px;border-radius:50%;background:var(--on-accent);display:block"></span></button></div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:15px;font-weight:600">Privacy and processing</div>
+          <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface)">
+            <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">Keep local knowledge bases local</div><div style="font-size:12.5px;color:var(--muted)">Block cloud models from answering over local knowledge bases.</div></div><button onClick="{{ toggle.blockCloud }}" style="width:38px;height:22px;flex-shrink:0;border-radius:999px;border:none;padding:3px;background:{{ tg.blockCloud.bg }};cursor:pointer;display:flex;justify-content:{{ tg.blockCloud.j }};transition:background .15s"><span style="width:16px;height:16px;border-radius:50%;background:var(--on-accent);display:block"></span></button></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:16px 18px"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">OCR for scanned PDFs</div><div style="font-size:12.5px;color:var(--muted)">Extract text from image-only pages. Uses more CPU.</div></div><button onClick="{{ toggle.ocr }}" style="width:38px;height:22px;flex-shrink:0;border-radius:999px;border:none;padding:3px;background:{{ tg.ocr.bg }};cursor:pointer;display:flex;justify-content:{{ tg.ocr.j }};transition:background .15s"><span style="width:16px;height:16px;border-radius:50%;background:var(--on-accent);display:block"></span></button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;overflow:auto">
+      <div style="max-width:820px;margin:0 auto;padding:32px {{ hpad }} 56px;display:flex;flex-direction:column;gap:24px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;flex-shrink:0">{{ me.initials }}</div>
+          <div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:4px"><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.02em">{{ me.name }}</h1><div style="font-size:14px;color:var(--muted)">{{ me.email }} · Owner</div></div>
+          <button style="height:36px;padding:0 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:var(--surface2)">Change photo</button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:15px;font-weight:600">Personal information</div>
+          <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:18px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;flex:1;min-width:220px">Full name<input value="{{ pf.name }}" onChange="{{ pf.onName }}" style="height:40px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;outline:none;width:100%"></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;flex:1;min-width:220px">Email<input value="{{ pf.email }}" onChange="{{ pf.onEmail }}" style="height:40px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;outline:none;width:100%"></label>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <button onClick="{{ pf.save }}" style="height:38px;padding:0 16px;border:none;border-radius:9px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;opacity:{{ pf.saveOp }}">Save changes</button>
+              <sc-if value="{{ pf.saved }}"><span style="font-size:13px;color:var(--ok-text)">Saved</span></sc-if>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:15px;font-weight:600">Password</div>
+          <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:18px;display:flex;flex-direction:column;gap:16px">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;flex:1;min-width:220px;max-width:360px">Current password<input type="password" value="{{ pw.cur }}" onChange="{{ pw.onCur }}" placeholder="••••••••" style="height:40px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;outline:none;width:100%"></label>
+            <div style="display:flex;gap:14px;flex-wrap:wrap">
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;flex:1;min-width:220px">New password<input type="password" value="{{ pw.nw }}" onChange="{{ pw.onNw }}" placeholder="At least 10 characters" style="height:40px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;outline:none;width:100%"></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;flex:1;min-width:220px">Confirm new password<input type="password" value="{{ pw.cf }}" onChange="{{ pw.onCf }}" placeholder="Repeat new password" style="height:40px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;outline:none;width:100%"></label>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <button onClick="{{ pw.save }}" style="height:36px;padding:0 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer;height:38px" style-hover="background:var(--surface2)">Update password</button>
+              <sc-if value="{{ pw.msg }}"><span style="font-size:13px;color:{{ pw.msgColor }}">{{ pw.msg }}</span></sc-if>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="font-size:15px;font-weight:600">Active sessions</div><sc-if value="{{ hasOtherSessions }}"><button onClick="{{ signOutOthers }}" style="border:none;background:none;padding:0;color:var(--err-text);font:inherit;font-size:13px;font-weight:500;cursor:pointer">Sign out all other sessions</button></sc-if></div>
+          <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface)">
+            <sc-for list="{{ sessions }}" as="x" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+                <span style="width:32px;height:32px;border-radius:8px;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg></span>
+                <div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:3px"><span style="font-size:14px;font-weight:500">{{ x.device }}</span><span style="font-size:12.5px;color:var(--muted)">{{ x.ip }} · {{ x.last }}</span></div>
+                <sc-if value="{{ x.current }}"><span style="font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--ok-soft);color:var(--ok-text)">This device</span></sc-if>
+                <sc-if value="{{ x.other }}"><button onClick="{{ x.revoke }}" style="height:36px;padding:0 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer;height:32px" style-hover="background:var(--surface2)">Sign out</button></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:15px;font-weight:600">Preferences</div>
+          <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface)">
+            <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap"><div style="flex:1;min-width:180px"><div style="font-size:14px;font-weight:500">Theme</div><div style="font-size:12.5px;color:var(--muted)">Only affects your account.</div></div>
+              <div style="display:flex;padding:3px;border-radius:9px;background:var(--surface2);gap:2px"><button onClick="{{ setLight }}" style="height:30px;padding:0 14px;border:none;border-radius:7px;background:{{ themeSeg.lightBg }};color:{{ themeSeg.lightColor }};font:inherit;font-size:13px;font-weight:500;cursor:pointer">Light</button><button onClick="{{ setDark }}" style="height:30px;padding:0 14px;border:none;border-radius:7px;background:{{ themeSeg.darkBg }};color:{{ themeSeg.darkColor }};font:inherit;font-size:13px;font-weight:500;cursor:pointer">Dark</button></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div style="font-size:14px;font-weight:500">Default knowledge base</div><div style="font-size:12.5px;color:var(--muted)">Selected when you start a new chat.</div></div>
+              <div style="position:relative;min-width:220px"><select value="{{ defaultKb }}" onChange="{{ onDefaultKb }}" style="appearance:none;-webkit-appearance:none;width:100%;height:38px;padding:0 34px 0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13.5px;cursor:pointer;outline:none"><sc-for list="{{ kbList }}" as="k"><option value="{{ k.id }}">{{ k.name }}</option></sc-for></select><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round;stroke-linejoin:round;position:absolute;right:12px;top:12px;pointer-events:none;color:var(--muted)"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:15px;font-weight:600;color:var(--err-text)">Danger zone</div>
+          <div style="border:1px solid var(--err-soft);border-radius:14px;background:var(--surface);display:flex;align-items:center;gap:12px;padding:16px 18px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:500">Delete account</div><div style="font-size:12.5px;color:var(--muted)">Removes your account, chats and API connections. Knowledge bases stay with the workspace.</div></div><button style="height:36px;padding:0 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer;color:var(--err-text)" style-hover="background:var(--err-soft)">Delete account</button></div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isKeys }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;overflow:auto">
+      <div style="max-width:820px;margin:0 auto;padding:32px {{ hpad }} 56px;display:flex;flex-direction:column;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:6px"><h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.02em">API keys</h1><p style="margin:0;color:var(--muted);font-size:14.5px;line-height:1.55;text-wrap:pretty">Connect a model provider. Any OpenAI-compatible endpoint works, including Ollama, OpenAI, Anthropic, OpenRouter and vLLM.</p></div>
+
+        <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:20px;display:flex;flex-direction:column;gap:16px">
+          <div style="font-size:15px;font-weight:600">Add a connection</div>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">API Base<input value="{{ apiBase }}" onChange="{{ onApiBase }}" placeholder="https://api.openai.com/v1" style="height:42px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;outline:none;width:100%;font-family:var(--font-mono)"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">API Key
+            <div style="display:flex;gap:8px"><input type="{{ keyInputType }}" value="{{ apiKey }}" onChange="{{ onApiKey }}" placeholder="sk-…" style="height:42px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;outline:none;width:100%;font-family:var(--font-mono);flex:1;min-width:0"><button onClick="{{ toggleShowKey }}" style="height:42px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--muted);font:inherit;font-size:13px;cursor:pointer;flex-shrink:0" style-hover="color:var(--text)">{{ showKeyLabel }}</button></div>
+          </label>
+          <sc-if value="{{ saveErr }}"><div style="font-size:12.5px;color:var(--err-text)">{{ saveErr }}</div></sc-if>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button onClick="{{ saveConn }}" style="height:40px;padding:0 20px;border:none;border-radius:10px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer;opacity:{{ saveOp }}">{{ saveLabel }}</button>
+            <span style="font-size:12.5px;color:var(--muted)">Keys are encrypted and stored on this server only.</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:15px;font-weight:600">Connected providers</div>
+          <sc-if value="{{ connsEmpty }}"><div style="border:1px dashed var(--border-strong);border-radius:12px;padding:28px;text-align:center;color:var(--muted);font-size:13.5px">No providers yet. Add an API Base and key above.</div></sc-if>
+          <sc-for list="{{ conns }}" as="c" hint-placeholder-count="2">
+            <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:14px;font-weight:600">{{ c.name }}</span><span style="font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--ok-soft);color:var(--ok-text)">Connected · {{ c.count }} models</span></div>
+                  <span style="font-size:12.5px;color:var(--muted);font-family:var(--font-mono);word-break:break-all">{{ c.base }}</span>
+                  <span style="font-size:12.5px;color:var(--muted);font-family:var(--font-mono)">{{ c.masked }}</span>
+                </div>
+                <button onClick="{{ c.remove }}" style="height:32px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--err-text);font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:var(--err-soft)">Remove</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:14px">
+                <div style="flex:1;min-width:180px"><div style="font-size:13.5px;font-weight:500">Model</div><div style="font-size:12.5px;color:var(--muted)">{{ c.hint }}</div></div>
+                <div style="position:relative;min-width:220px">
+                  <select value="{{ c.model }}" onChange="{{ c.onModel }}" style="appearance:none;-webkit-appearance:none;width:100%;height:38px;padding:0 34px 0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13.5px;cursor:pointer;outline:none">
+                    <sc-for list="{{ c.options }}" as="o"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+                  </select>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round;stroke-linejoin:round;position:absolute;right:12px;top:12px;pointer-events:none;color:var(--muted)"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+</div>
+
+<sc-if value="{{ shareOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeShare }}" style="position:absolute;inset:0;background:var(--overlay);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px">
+  <div onClick="{{ stop }}" style="width:100%;max-width:460px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:22px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:17px;font-weight:600">Share this answer</div><div style="font-size:13.5px;color:var(--muted);line-height:1.55">Anyone with the link can view this answer and its cited passages. Nothing else in the knowledge base is shared.</div></div>
+    <div style="display:flex;gap:8px"><div style="flex:1;min-width:0;height:40px;display:flex;align-items:center;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface2);font-family:var(--font-mono);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">rag.yourdomain.com/s/k3f9x2</div><button onClick="{{ copyLink }}" style="height:40px;padding:0 14px;border:none;border-radius:9px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;flex-shrink:0">{{ copiedLabel }}</button></div>
+    <div style="display:flex;align-items:center;gap:12px"><div style="flex:1;font-size:13.5px">Include source excerpts</div><button onClick="{{ toggle.incl }}" style="width:38px;height:22px;border-radius:999px;border:none;padding:3px;background:{{ tg.incl.bg }};cursor:pointer;display:flex;justify-content:{{ tg.incl.j }}"><span style="width:16px;height:16px;border-radius:50%;background:var(--on-accent);display:block"></span></button></div>
+    <div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--border);padding-top:16px"><button onClick="{{ go.share }}" style="border:none;background:none;padding:0;color:var(--accent-text);font:inherit;font-size:13.5px;font-weight:500;cursor:pointer">Preview public page</button><button onClick="{{ closeShare }}" style="height:34px;padding:0 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer">Done</button></div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ newKbOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeNewKb }}" style="position:absolute;inset:0;background:var(--overlay);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px">
+  <div onClick="{{ stop }}" style="width:100%;max-width:480px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:22px;display:flex;flex-direction:column;gap:18px">
+    <div style="font-size:17px;font-weight:600">New knowledge base</div>
+    <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">Name<input value="{{ nkName }}" onChange="{{ onNkName }}" placeholder="e.g. HR policies" style="height:40px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;outline:none"></label>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:13px;font-weight:500">Where should answers be generated?</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+        <button onClick="{{ setNkLocal }}" style="display:flex;flex-direction:column;gap:4px;padding:14px;border:1.5px solid {{ nk.localBorder }};border-radius:12px;background:{{ nk.localBg }};color:var(--text);font:inherit;text-align:left;cursor:pointer"><span style="font-size:14px;font-weight:600">Local</span><span style="font-size:12.5px;color:var(--muted);line-height:1.45">Ollama on this server. Documents never leave it.</span></button>
+        <button onClick="{{ setNkCloud }}" style="display:flex;flex-direction:column;gap:4px;padding:14px;border:1.5px solid {{ nk.cloudBorder }};border-radius:12px;background:{{ nk.cloudBg }};color:var(--text);font:inherit;text-align:left;cursor:pointer"><span style="font-size:14px;font-weight:600">Cloud</span><span style="font-size:12.5px;color:var(--muted);line-height:1.45">Anthropic or OpenAI. Stronger answers, passages sent via API.</span></button>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ closeNewKb }}" style="height:38px;padding:0 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13.5px;font-weight:500;cursor:pointer">Cancel</button><button onClick="{{ createKb }}" style="height:38px;padding:0 16px;border:none;border-radius:9px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer">Create and add files</button></div>
+  </div>
+</div>
+</sc-if>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;},&quot;frame&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;mobile&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;'auto'|'mobile'&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;chat&quot;,&quot;login&quot;,&quot;profile&quot;,&quot;kbs&quot;,&quot;kb&quot;,&quot;history&quot;,&quot;settings&quot;,&quot;keys&quot;,&quot;share&quot;],&quot;default&quot;:&quot;chat&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  MODELS = [
+    { id: 'llama', name: 'Llama 3.1 8B', via: 'Ollama · local', rt: 'local' },
+    { id: 'qwen', name: 'Qwen 2.5 14B', via: 'Ollama · local', rt: 'local' },
+    { id: 'claude', name: 'Claude Sonnet', via: 'Anthropic', rt: 'cloud' },
+    { id: 'gpt', name: 'GPT-4.1', via: 'OpenAI', rt: 'cloud' }
+  ];
+  SRC = {
+    msa14a: { file: 'Acme_MSA_2024.pdf', type: 'PDF', loc: 'Page 14 · §11.2 Termination for Convenience', page: 'p. 14', score: 0.92, chunk: 118, total: 186, before: '11.2 Termination for Convenience. ', hit: 'Either party may terminate this Agreement for any reason upon sixty (60) days\u2019 prior written notice to the other party.', after: ' Fees for Services performed through the effective date of termination remain payable.' },
+    msa14b: { file: 'Acme_MSA_2024.pdf', type: 'PDF', loc: 'Page 14 · §11.3 Termination for Cause', page: 'p. 14', score: 0.88, chunk: 119, total: 186, before: '11.3 Termination for Cause. ', hit: 'Either party may terminate upon thirty (30) days\u2019 written notice if the other party materially breaches this Agreement and fails to cure such breach within the notice period.', after: '' },
+    amend: { file: 'Acme_Amendment_02.docx', type: 'DOCX', loc: 'Page 2 · §3', page: 'p. 2', score: 0.81, chunk: 7, total: 22, before: 'Section 11.2 is amended as follows: ', hit: 'for any Statement of Work with a term exceeding twelve (12) months, the notice period shall be ninety (90) days.', after: ' All other terms remain in effect.' },
+    msa9: { file: 'Acme_MSA_2024.pdf', type: 'PDF', loc: 'Page 9 · §8.1 Work Product', page: 'p. 9', score: 0.9, chunk: 71, total: 186, before: '8.1 Work Product. ', hit: 'Upon Client\u2019s payment in full, Vendor assigns to Client all right, title and interest in the Deliverables created under each Statement of Work.', after: '' },
+    msa10: { file: 'Acme_MSA_2024.pdf', type: 'PDF', loc: 'Page 10 · §8.3 Vendor Materials', page: 'p. 10', score: 0.84, chunk: 74, total: 186, before: '8.3 Vendor Materials. ', hit: 'Vendor retains all rights in its pre-existing tools, templates and know-how, and grants Client a non-exclusive license to use them as incorporated in the Deliverables.', after: '' },
+    msa6a: { file: 'Acme_MSA_2024.pdf', type: 'PDF', loc: 'Page 6 · §5.2 Payment', page: 'p. 6', score: 0.91, chunk: 44, total: 186, before: '5.2 Payment. ', hit: 'Client shall pay all undisputed invoices within forty-five (45) days of receipt.', after: ' Invoices shall be issued monthly in arrears.' },
+    msa6b: { file: 'Acme_MSA_2024.pdf', type: 'PDF', loc: 'Page 6 · §5.4 Late Payment', page: 'p. 6', score: 0.79, chunk: 46, total: 186, before: '5.4 Late Payment. ', hit: 'Overdue amounts bear interest at one percent (1%) per month. Vendor may suspend Services if payment is more than thirty (30) days overdue, following written notice.', after: '' },
+    renew: { file: 'Acme_MSA_2024.pdf', type: 'PDF', loc: 'Page 15 · §12.1 Renewal', page: 'p. 15', score: 0.54, chunk: 124, total: 186, before: '12.1 Renewal. ', hit: 'This Agreement renews automatically for successive one-year terms unless either party gives notice of non-renewal at least sixty (60) days before the end of the then-current term.', after: '' },
+    survey: { file: 'RAG_survey_2024.pdf', type: 'PDF', loc: 'Page 7 · §4.2 Hybrid retrieval', page: 'p. 7', score: 0.58, chunk: 52, total: 310, before: '', hit: 'Hybrid retrieval combining sparse and dense signals outperformed dense-only retrieval on 9 of 12 benchmarks, particularly for queries containing rare entities.', after: '' },
+    runbook: { file: 'Runbook_deploy.md', type: 'MD', loc: 'Section: Rollback', page: 'Rollback', score: 0.61, chunk: 12, total: 40, before: 'Rollback. ', hit: 'Redeploy the previous tagged image with make deploy TAG=v2.2.4, then run the down migration for 0047.', after: '' }
+  };
+  ANS = {
+    term: { conf: 'high', text: "The Acme Master Services Agreement requires **60 days' written notice** to terminate for any reason [1]. Either party can also terminate for material breach with 30 days' notice if the breach isn't cured in that window [2]. The second amendment extends the notice period to **90 days** for any Statement of Work longer than 12 months [3].", src: ['msa14a', 'msa14b', 'amend'], follow: ['Does the 90-day rule apply to the Northwind SOW?', 'Who owns IP created during the engagement?', 'Summarize the payment terms'] },
+    ip: { conf: 'high', text: "Deliverables created under a Statement of Work are **assigned to the client once paid in full** [1]. The vendor keeps its pre-existing tools and templates, and the client gets a non-exclusive license to use them where they're built into the deliverables [2].", src: ['msa9', 'msa10'], follow: ['What happens to IP if the contract ends early?', 'Summarize the payment terms'] },
+    pay: { conf: 'high', text: "Invoices are due **within 45 days** of receipt [1]. Late amounts accrue interest at 1% per month, and the vendor can suspend services once a payment is more than 30 days overdue, after giving written notice [2].", src: ['msa6a', 'msa6b'], follow: ['Can the client dispute an invoice?', 'What is the termination notice period?'] },
+    none: { conf: 'low', text: "I couldn't find a passage that answers this directly. The closest match is below [1], but it only partly covers the question. Try rephrasing, or search a different knowledge base.", src: null, follow: ['What is the termination notice period?', 'Summarize the payment terms'] }
+  };
+  HIST = [
+    { title: 'Acme termination notice', q: "What's the termination notice period in the Acme MSA?", kb: 'contracts', count: 4, time: '10:42', group: 'Today' },
+    { title: 'Payment terms across MSAs', q: 'Summarize the payment terms', kb: 'contracts', count: 6, time: '09:15', group: 'Today' },
+    { title: 'Hybrid search vs. dense retrieval', q: 'When does hybrid search beat dense retrieval?', kb: 'research', count: 8, time: '16:30', group: 'Yesterday' },
+    { title: 'IP ownership in deliverables', q: 'Who owns IP created during the engagement?', kb: 'contracts', count: 5, time: 'Sat', group: 'Previous 7 days' },
+    { title: 'Deploy runbook for v2.3', q: 'What are the rollback steps for v2.3?', kb: 'product', count: 3, time: 'Fri', group: 'Previous 7 days' }
+  ];
+  EVENTS = [
+    { cat: 'chat', title: 'Acme termination notice', detail: 'Client Contracts · 4 messages', time: '10:42', group: 'Today', hist: 0 },
+    { cat: 'doc', title: 'Uploaded Northwind_SOW_Q3.pdf', detail: 'Client Contracts · 640 KB', time: '10:31', group: 'Today', tag: 'Indexing', tone: 'accent', kb: 'contracts' },
+    { cat: 'login', title: 'Signed in', detail: 'Chrome on macOS · 203.0.113.24', time: '10:28', group: 'Today', tag: 'This device', tone: 'ok' },
+    { cat: 'doc', title: 'Globex_NDA_scan.pdf failed to index', detail: 'No text layer found', time: '10:20', group: 'Today', tag: 'Failed', tone: 'err', kb: 'contracts' },
+    { cat: 'chat', title: 'Shared an answer', detail: 'Acme termination notice · rag.yourdomain.com/s/k3f9x2', time: '09:22', group: 'Today' },
+    { cat: 'chat', title: 'Payment terms across MSAs', detail: 'Client Contracts · 6 messages', time: '09:15', group: 'Today', hist: 1 },
+    { cat: 'settings', title: 'Chunk size changed', detail: '1000 → 800 tokens · 3 knowledge bases re-indexed', time: '17:05', group: 'Yesterday' },
+    { cat: 'chat', title: 'Hybrid search vs. dense retrieval', detail: 'Research Papers · 8 messages', time: '16:30', group: 'Yesterday', hist: 2 },
+    { cat: 'key', title: 'API key revoked', detail: '"Old staging" · last used Sep 20', time: '14:12', group: 'Yesterday' },
+    { cat: 'login', title: 'Failed sign-in attempt', detail: 'Firefox on Linux · 198.51.100.7 · wrong password', time: '02:14', group: 'Yesterday', tag: 'Blocked', tone: 'err' },
+    { cat: 'doc', title: 'Uploaded Acme_Amendment_02.docx', detail: 'Client Contracts · 22 chunks', time: 'Sat', group: 'Previous 7 days', tag: 'Indexed', tone: 'ok', kb: 'contracts' },
+    { cat: 'chat', title: 'IP ownership in deliverables', detail: 'Client Contracts · 5 messages', time: 'Sat', group: 'Previous 7 days', hist: 3 },
+    { cat: 'settings', title: 'Model provider connected', detail: 'Anthropic · Claude Sonnet available', time: 'Fri', group: 'Previous 7 days' },
+    { cat: 'chat', title: 'Deploy runbook for v2.3', detail: 'Product Docs · 3 messages', time: 'Fri', group: 'Previous 7 days', hist: 4 },
+    { cat: 'login', title: 'Signed in', detail: 'Safari on iPhone · 203.0.113.24', time: 'Thu', group: 'Previous 7 days' },
+    { cat: 'key', title: 'API key used for the first time', detail: '"VPS production" · 1,204 requests since', time: 'Wed', group: 'Previous 7 days' }
+  ];
+  HTABS = [['all', 'All activity'], ['chat', 'Chats'], ['doc', 'Documents'], ['login', 'Sign-ins'], ['key', 'API keys'], ['settings', 'Settings']];
+  UPLOADS = [
+    { name: 'Board_minutes_Sep.pdf', type: 'PDF', size: '2.1 MB', fc: 142 },
+    { name: 'Pricing_FAQ.md', type: 'MD', size: '18 KB', fc: 14 },
+    { name: 'Q3_pipeline.csv', type: 'CSV', size: '96 KB', fc: 38 }
+  ];
+
+  state = {
+    screen: null, themeO: null, kbId: 'contracts', model: 'llama', menu: null, msgs: [], draft: '', src: null,
+    shareOpen: false, shareIdx: null, copied: false, incl: true, drawer: false, w: window.innerWidth, quick: null,
+    newKbOpen: false, nkName: '', nkRt: 'local', histQ: '', copiedMsg: null, upN: 0, newKey: null,
+    num: { size: 800, ov: 120, k: 5 }, histTab: 'all', live: [], me: { name: 'AIwithRC Admin', email: 'admin@aiwithrc.com' }, pfDraft: null, pfSaved: false, pw: { cur: '', nw: '', cf: '', msg: '', ok: false }, defaultKb: 'contracts',
+    sessions: [
+      { id: 1, device: 'Chrome on macOS', ip: '203.0.113.24', last: 'Active now', current: true },
+      { id: 2, device: 'Safari on iPhone', ip: '203.0.113.24', last: 'Last active Thu' },
+      { id: 3, device: 'Firefox on Ubuntu (VPS console)', ip: '198.51.100.40', last: 'Last active Sep 20' }
+    ], apiBase: '', apiKey: '', showKey: false, saving: false, saveErr: '',
+    conns: [
+      { id: 1, base: 'http://localhost:11434/v1', key: 'ollama', model: 'auto' },
+      { id: 2, base: 'https://api.anthropic.com/v1', key: 'sk-ant-api03-x7Qd4f1c', model: 'auto' }
+    ], tg: { hybrid: true, rerank: true, blockCloud: false, ocr: false },
+    kbs: [
+      { id: 'contracts', name: 'Client Contracts', desc: 'MSAs, SOWs and amendments for active clients', chunks: '3,812', rt: 'local', model: 'llama', updated: 'Updated 2h ago' },
+      { id: 'research', name: 'Research Papers', desc: 'Retrieval and evaluation papers, 2022 to 2026', chunks: '12,407', rt: 'cloud', model: 'claude', updated: 'Updated yesterday' },
+      { id: 'product', name: 'Product Docs', desc: 'Internal specs, runbooks and release notes', chunks: '5,190', rt: 'local', model: 'qwen', updated: 'Updated 3d ago' }
+    ],
+    docs: {
+      contracts: [
+        { name: 'Acme_MSA_2024.pdf', type: 'PDF', size: '1.2 MB', chunks: 186, status: 'indexed' },
+        { name: 'Acme_Amendment_02.docx', type: 'DOCX', size: '84 KB', chunks: 22, status: 'indexed' },
+        { name: 'Northwind_SOW_Q3.pdf', type: 'PDF', size: '640 KB', chunks: 0, status: 'embedding', progress: 64, fc: 58 },
+        { name: 'Rate_card_2026.xlsx', type: 'XLSX', size: '38 KB', chunks: 0, status: 'queued', fc: 12 },
+        { name: 'Globex_NDA_scan.pdf', type: 'PDF', size: '4.8 MB', chunks: 0, status: 'failed', error: 'No text layer found. Turn on OCR in Settings.' },
+        { name: 'Vendor_policy.md', type: 'MD', size: '12 KB', chunks: 9, status: 'indexed' }
+      ],
+      research: [
+        { name: 'RAG_survey_2024.pdf', type: 'PDF', size: '3.4 MB', chunks: 310, status: 'indexed' },
+        { name: 'ColBERTv2.pdf', type: 'PDF', size: '1.1 MB', chunks: 96, status: 'indexed' },
+        { name: 'Lost_in_the_middle.pdf', type: 'PDF', size: '880 KB', chunks: 74, status: 'indexed' }
+      ],
+      product: [
+        { name: 'Runbook_deploy.md', type: 'MD', size: '22 KB', chunks: 40, status: 'indexed' },
+        { name: 'Spec_search_v2.docx', type: 'DOCX', size: '410 KB', chunks: 88, status: 'indexed' },
+        { name: 'Release_notes_2.3.md', type: 'MD', size: '9 KB', chunks: 11, status: 'indexed' }
+      ]
+    },
+    keys: [
+      { name: 'Local dev', key: 'rag_sk_••••••••9f2a', created: 'Sep 12, 2026', last: '2 min ago' },
+      { name: 'VPS production', key: 'rag_sk_••••••••c71e', created: 'Aug 30, 2026', last: '1 hour ago' }
+    ]
+  };
+
+  componentDidMount() {
+    this.onR = () => this.setState({ w: window.innerWidth });
+    window.addEventListener('resize', this.onR);
+    this.iv = setInterval(this.tick, 380);
+    this.applyTheme();
+  }
+  componentDidUpdate() { this.applyTheme(); }
+  componentWillUnmount() { window.removeEventListener('resize', this.onR); clearInterval(this.iv); clearTimeout(this.pt); }
+  theme() { return this.state.themeO || this.props.theme || 'light'; }
+  applyTheme() { document.documentElement.setAttribute('data-theme', this.theme()); }
+  scr() { return this.state.screen || this.props.startScreen || 'chat'; }
+  mobile() { return this.props.frame === 'mobile' || this.state.w < 820; }
+  kbObj(id) { return this.state.kbs.find(k => k.id === (id || this.state.kbId)) || this.state.kbs[0]; }
+  modelObj(id) { return this.MODELS.find(m => m.id === (id || this.state.model)) || this.MODELS[0]; }
+  provider(base) {
+    const b = base.toLowerCase();
+    if (b.includes('11434') || b.includes('ollama')) return { name: 'Ollama', models: ['llama3.1:8b', 'qwen2.5:14b', 'mistral:7b', 'nomic-embed-text'] };
+    if (b.includes('anthropic')) return { name: 'Anthropic', models: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-1'] };
+    if (b.includes('openai.com')) return { name: 'OpenAI', models: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'text-embedding-3-small'] };
+    if (b.includes('openrouter')) return { name: 'OpenRouter', models: ['meta-llama/llama-3.1-70b-instruct', 'mistralai/mixtral-8x7b', 'anthropic/claude-sonnet-4.5'] };
+    let host = b; try { host = new URL(base).host; } catch (e) {}
+    return { name: host || 'Custom endpoint', models: ['default-chat', 'default-embed'] };
+  }
+  log = ev => this.setState(st => ({ live: [{ group: 'Today', time: 'Just now', ...ev }, ...st.live] }));
+  go = s => this.setState({ screen: s, drawer: false, menu: null, shareOpen: false, src: null });
+
+  tick = () => {
+    const s = this.state, proc = d => ['parsing', 'chunking', 'embedding'].includes(d.status);
+    const onKb = this.scr() === 'kb', list = s.docs[s.kbId] || [];
+    const docsBusy = onKb && list.some(d => proc(d) || d.status === 'queued');
+    const quickBusy = s.quick && !s.quick.done;
+    if (!docsBusy && !quickBusy) return;
+    const upd = {};
+    if (docsBusy) {
+      let next = list.map(d => {
+        if (!proc(d)) return d;
+        const p = Math.min(100, (d.progress || 0) + (d.status === 'embedding' ? 3 : 5));
+        const status = p >= 100 ? 'indexed' : p >= 55 ? 'embedding' : p >= 30 ? 'chunking' : 'parsing';
+        return { ...d, progress: p, status, chunks: p >= 100 ? d.fc : 0 };
+      });
+      if (!next.some(proc)) { const qi = next.findIndex(d => d.status === 'queued'); if (qi >= 0) next[qi] = { ...next[qi], status: 'parsing', progress: 0 }; }
+      upd.docs = { ...s.docs, [s.kbId]: next };
+    }
+    if (quickBusy) { const p = Math.min(100, s.quick.p + 7); upd.quick = { ...s.quick, p, done: p >= 100 }; }
+    this.setState(upd);
+  };
+
+  pick(q) {
+    q = q.toLowerCase();
+    if (/\bip\b|intellectual|\bowns?\b/.test(q)) return 'ip';
+    if (/pay|invoice/.test(q)) return 'pay';
+    if (/terminat|notice/.test(q)) return 'term';
+    return 'none';
+  }
+  ansFor(m) {
+    const a = this.ANS[m.key];
+    const src = a.src || [m.kbId === 'research' ? 'survey' : m.kbId === 'product' ? 'runbook' : 'renew'];
+    return { ...a, sources: src.map(k => this.SRC[k]) };
+  }
+  ask = q => {
+    q = (q || '').trim(); if (!q) return;
+    const key = this.pick(q);
+    this.setState(s => ({ screen: 'chat', src: null, menu: null, draft: '', msgs: [...s.msgs, { role: 'user', text: q }, { role: 'assistant', key, pending: true, model: s.model, kbId: s.kbId }] }));
+    clearTimeout(this.pt);
+    this.pt = setTimeout(() => this.setState(s => ({ msgs: s.msgs.map(m => m.pending ? { ...m, pending: false } : m) })), 1100);
+  };
+  segs(text, mi, active) {
+    return text.split(/(\*\*[^*]+\*\*|\[\d\])/).filter(Boolean).map(p => {
+      if (p.startsWith('**')) return { isBold: true, t: p.slice(2, -2) };
+      const c = p.match(/^\[(\d)\]$/);
+      if (c) {
+        const n = +c[1], on = active && active.m === mi && active.i === n - 1;
+        return { isCite: true, t: n, bg: on ? 'var(--accent)' : 'var(--accent-soft)', color: on ? 'var(--on-accent)' : 'var(--accent-text)', open: () => this.setState({ src: { m: mi, i: n - 1 } }) };
+      }
+      return { isText: true, t: p };
+    });
+  }
+  conf(c, n) {
+    return c === 'high'
+      ? { confText: 'High confidence · ' + n + ' sources', confBg: 'var(--ok-soft)', confColor: 'var(--ok-text)' }
+      : { confText: 'Low confidence · partial match', confBg: 'var(--warn-soft)', confColor: 'var(--warn-text)' };
+  }
+  rt(r) {
+    return r === 'local'
+      ? { rtLabel: 'Local', rtBg: 'var(--ok-soft)', rtColor: 'var(--ok-text)' }
+      : { rtLabel: 'Cloud', rtBg: 'var(--accent-soft)', rtColor: 'var(--accent-text)' };
+  }
+  openHist(h) {
+    this.setState({ kbId: h.kb, model: this.kbObj(h.kb).model, screen: 'chat', drawer: false, src: null, menu: null, msgs: [{ role: 'user', text: h.q }, { role: 'assistant', key: this.pick(h.q), pending: false, model: this.kbObj(h.kb).model, kbId: h.kb }] });
+  }
+  statusOf(d) {
+    const map = {
+      indexed: ['Indexed', 'var(--ok-soft)', 'var(--ok-text)'], queued: ['Queued', 'var(--surface2)', 'var(--muted)'],
+      failed: ['Failed', 'var(--err-soft)', 'var(--err-text)'], parsing: ['Parsing', 'var(--accent-soft)', 'var(--accent-text)'],
+      chunking: ['Chunking', 'var(--accent-soft)', 'var(--accent-text)'], embedding: ['Embedding', 'var(--accent-soft)', 'var(--accent-text)']
+    }[d.status];
+    const isProc = ['parsing', 'chunking', 'embedding'].includes(d.status);
+    return { label: isProc ? map[0] + ' · ' + Math.round(d.progress || 0) + '%' : map[0], bg: map[1], color: map[2], isProc, w: (d.progress || 0) + '%' };
+  }
+
+  renderVals() {
+    const s = this.state, scr = this.scr(), mob = this.mobile(), kbo = this.kbObj(), mo = this.modelObj();
+    const hasThread = s.msgs.length > 0;
+    const navItem = k => ({ bg: (scr === k || (k === 'kbs' && scr === 'kb')) ? 'var(--surface2)' : 'transparent', color: (scr === k || (k === 'kbs' && scr === 'kb')) ? 'var(--text)' : 'var(--muted)' });
+    const go = {}; ['chat', 'kbs', 'history', 'keys', 'settings', 'login', 'share', 'profile'].forEach(k => go[k] = () => this.go(k));
+    const docCount = id => (s.docs[id] || []).length;
+    const kbView = k => ({ ...k, ...this.rt(k.rt), docs: docCount(k.id), model: this.modelObj(k.model).name });
+    const privacy = mo.rt === 'local'
+      ? { text: 'Private · runs on your server', bg: 'var(--ok-soft)', color: 'var(--ok-text)' }
+      : { text: 'Uses ' + mo.via + ' · passages sent via API', bg: 'var(--warn-soft)', color: 'var(--warn-text)' };
+
+    const msgs = s.msgs.map((m, i) => {
+      if (m.role === 'user') return { isUser: true, text: m.text };
+      if (m.pending) return { isPending: true, kbName: this.kbObj(m.kbId).name };
+      const a = this.ansFor(m), isLast = i === s.msgs.length - 1;
+      return {
+        isAnswer: true, modelName: this.modelObj(m.model).name, ...this.conf(a.conf, a.sources.length),
+        segs: this.segs(a.text, i, s.src),
+        sources: a.sources.map((c, j) => { const on = s.src && s.src.m === i && s.src.i === j; return { n: j + 1, file: c.file, page: c.page, border: on ? 'var(--accent)' : 'var(--border)', bg: on ? 'var(--accent-soft)' : 'var(--surface)', open: () => this.setState({ src: { m: i, i: j } }) }; }),
+        showFollow: isLast, follow: a.follow.map(q => ({ q, ask: () => this.ask(q) })),
+        copyLabel: s.copiedMsg === i ? 'Copied' : 'Copy',
+        copy: () => { this.setState({ copiedMsg: i }); setTimeout(() => this.setState({ copiedMsg: null }), 1400); },
+        share: () => this.setState({ shareOpen: true, shareIdx: i, copied: false }),
+        regen: () => { this.setState(st => ({ msgs: st.msgs.map((x, xi) => xi === i ? { ...x, pending: true } : x) })); clearTimeout(this.pt); this.pt = setTimeout(() => this.setState(st => ({ msgs: st.msgs.map(x => x.pending ? { ...x, pending: false } : x) })), 900); }
+      };
+    });
+
+    let src = {}, srcTabs = [], srcOpen = false;
+    if (s.src && s.msgs[s.src.m] && !s.msgs[s.src.m].pending) {
+      const a = this.ansFor(s.msgs[s.src.m]), c = a.sources[s.src.i];
+      if (c) {
+        srcOpen = true;
+        src = { ...c, score: c.score.toFixed(2), w: Math.round(c.score * 100) + '%', bar: c.score > 0.75 ? 'var(--ok)' : 'var(--warn)' };
+        srcTabs = a.sources.map((_, j) => ({ n: j + 1, bg: j === s.src.i ? 'var(--accent)' : 'var(--surface2)', color: j === s.src.i ? 'var(--on-accent)' : 'var(--muted)', select: () => this.setState({ src: { m: s.src.m, i: j } }) }));
+      }
+    }
+
+    let shareIdx = s.shareIdx;
+    if (shareIdx == null || !s.msgs[shareIdx]) shareIdx = s.msgs.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i >= 0).pop();
+    let shared = { q: "What's the termination notice period in the Acme MSA?", segs: [], sources: [], kbName: kbo.name, modelName: mo.name };
+    const sm = shareIdx != null ? s.msgs[shareIdx] : { key: 'term', kbId: 'contracts', model: 'llama' };
+    { const a = this.ansFor(sm); const q = shareIdx != null && s.msgs[shareIdx - 1] ? s.msgs[shareIdx - 1].text : shared.q;
+      shared = { q, kbName: this.kbObj(sm.kbId).name, modelName: this.modelObj(sm.model).name, ...this.conf(a.conf, a.sources.length), segs: this.segs(a.text, -1, null), sources: s.incl ? a.sources.map((c, j) => ({ ...c, n: j + 1, score: c.score.toFixed(2) })) : [] }; }
+
+    const qk = s.quick;
+    const quick = !qk ? { none: true, show: false } : {
+      none: false, show: true, name: qk.name, w: qk.p + '%', done: qk.done,
+      pctLabel: qk.done ? 'Ready' : qk.p + '%', color: qk.done ? 'var(--ok-text)' : 'var(--muted)', bar: qk.done ? 'var(--ok)' : 'var(--accent)',
+      stage: qk.done ? 'Indexed 186 passages in 4.6s. Ask it anything.' : qk.p < 30 ? 'Reading 42 pages…' : qk.p < 55 ? 'Splitting into passages…' : (mo.rt === 'local' ? 'Embedding on your server…' : 'Creating embeddings…')
+    };
+    const baseSug = kbo.id === 'contracts' ? ["What's the termination notice period?", 'Who owns IP created during the engagement?', 'Summarize the payment terms'] : kbo.id === 'research' ? ['When does hybrid search beat dense retrieval?', 'Which papers evaluate reranking?'] : ['What are the rollback steps for v2.3?', 'How is search v2 ranked?'];
+
+    const list = s.docs[s.kbId] || [];
+    const docs = list.map(d => ({ ...d, ...this.statusOf(d), hasError: !!d.error, chunks: d.chunks || '—' }));
+    const hq = s.histQ.toLowerCase();
+    const allEv = [...s.live, ...this.EVENTS];
+    const icon = { chat: ['var(--accent-soft)', 'var(--accent-text)'], doc: ['var(--surface2)', 'var(--text)'], login: ['var(--ok-soft)', 'var(--ok-text)'], key: ['var(--warn-soft)', 'var(--warn-text)'], settings: ['var(--surface2)', 'var(--muted)'] };
+    const tone = { ok: ['var(--ok-soft)', 'var(--ok-text)'], err: ['var(--err-soft)', 'var(--err-text)'], accent: ['var(--accent-soft)', 'var(--accent-text)'] };
+    const groups = [];
+    allEv.filter(e => (s.histTab === 'all' || e.cat === s.histTab) && (!hq || (e.title + ' ' + e.detail).toLowerCase().includes(hq))).forEach(e => {
+      let g = groups.find(x => x.label === e.group); if (!g) groups.push(g = { label: e.group, items: [] });
+      const nav = e.hist != null ? () => this.openHist(this.HIST[e.hist]) : e.kb ? () => this.setState({ kbId: e.kb, screen: 'kb' }) : e.cat === 'key' ? () => this.go('keys') : e.cat === 'settings' ? () => this.go('settings') : null;
+      g.items.push({ ...e, isChat: e.cat === 'chat', isDoc: e.cat === 'doc', isLogin: e.cat === 'login', isKey: e.cat === 'key', isSettings: e.cat === 'settings', iconBg: icon[e.cat][0], iconColor: icon[e.cat][1], hasTag: !!e.tag, tagBg: e.tone ? tone[e.tone][0] : '', tagColor: e.tone ? tone[e.tone][1] : '', open: nav || (() => {}), cursor: nav ? 'pointer' : 'default' });
+    });
+    const histTabs = this.HTABS.map(([id, label]) => ({ label, count: id === 'all' ? allEv.length : allEv.filter(e => e.cat === id).length, line: s.histTab === id ? 'var(--accent)' : 'transparent', color: s.histTab === id ? 'var(--text)' : 'var(--muted)', select: () => this.setState({ histTab: id }) }));
+    const tgv = k => ({ bg: s.tg[k] ? 'var(--accent)' : 'var(--border-strong)', j: s.tg[k] ? 'flex-end' : 'flex-start' });
+    const toggle = {}; const tgName = { hybrid: 'Hybrid search', rerank: 'Rerank results', blockCloud: 'Keep local knowledge bases local', ocr: 'OCR for scanned PDFs' };
+    ['hybrid', 'rerank', 'blockCloud', 'ocr'].forEach(k => toggle[k] = () => { this.log({ cat: 'settings', title: tgName[k] + (s.tg[k] ? ' turned off' : ' turned on'), detail: 'Workspace settings' }); this.setState(st => ({ tg: { ...st.tg, [k]: !st.tg[k] } })); });
+    toggle.incl = () => this.setState(st => ({ incl: !st.incl }));
+    const numName = { size: 'Chunk size', ov: 'Overlap', k: 'Passages per answer' };
+    const step = (k, d, min, max) => () => { const nv = Math.max(min, Math.min(max, s.num[k] + d)); if (nv === s.num[k]) return; this.setState(st => ({ num: { ...st.num, [k]: nv }, live: st.live[0] && st.live[0].numKey === k ? [{ ...st.live[0], detail: st.live[0].from + ' → ' + nv }, ...st.live.slice(1)] : [{ group: 'Today', time: 'Just now', cat: 'settings', numKey: k, from: s.num[k], title: numName[k] + ' changed', detail: s.num[k] + ' → ' + nv }, ...st.live] })); };
+    const titles = { chat: hasThread ? (s.msgs[0].text.length > 48 ? s.msgs[0].text.slice(0, 48) + '…' : s.msgs[0].text) : 'New chat', kbs: 'Knowledge bases', kb: kbo.name, history: 'History', keys: 'API keys', settings: 'Settings', profile: 'My profile' };
+    const signUp = s.auth === 'up';
+
+    return {
+      isLogin: scr === 'login', isShare: scr === 'share', isApp: scr !== 'login' && scr !== 'share',
+      isChat: scr === 'chat', isKbs: scr === 'kbs', isKb: scr === 'kb', isHistory: scr === 'history', isSettings: scr === 'settings', isKeys: scr === 'keys', isProfile: scr === 'profile',
+      isMobile: mob, isDesktop: !mob,
+      frameW: this.props.frame === 'mobile' ? '390px' : '100%', frameBorder: this.props.frame === 'mobile' ? '1px solid var(--border)' : 'none',
+      hpad: mob ? '16px' : '32px', pickerMax: mob ? '118px' : '220px', heroSize: mob ? '28px' : '38px', emptyTop: mob ? '40px' : '11vh',
+      sbPos: mob ? 'absolute' : 'relative', sbTransform: mob ? (s.drawer ? 'translateX(0)' : 'translateX(-105%)') : 'none',
+      drawerOpen: mob && s.drawer, openDrawer: () => this.setState({ drawer: true }), closeDrawer: () => this.setState({ drawer: false }),
+      panelPos: (mob || s.w < 1200) ? 'absolute' : 'relative', panelW: mob ? '100%' : s.w < 1200 ? 'min(420px,100%)' : '400px', panelShadow: (!mob && s.w < 1200) ? 'var(--shadow)' : 'none',
+      nav: { chat: navItem('chat'), kbs: navItem('kbs'), history: navItem('history'), keys: navItem('keys'), settings: navItem('settings'), profile: navItem('profile') }, go,
+      pageTitle: titles[scr] || '',
+      newChat: () => this.setState({ kbId: s.defaultKb, model: this.kbObj(s.defaultKb).model, msgs: [], screen: 'chat', drawer: false, src: null, quick: null, draft: '' }),
+      recent: this.HIST.slice(0, 4).map(h => ({ title: h.title, open: () => this.openHist(h) })),
+      themeLabel: this.theme() === 'dark' ? 'Light mode' : 'Dark mode',
+      toggleTheme: () => this.setState({ themeO: this.theme() === 'dark' ? 'light' : 'dark' }),
+      kb: kbView(kbo), model: { ...mo, dot: mo.rt === 'local' ? 'var(--ok)' : 'var(--accent)' },
+      kbList: s.kbs.map(k => ({ ...kbView(k), checkOp: k.id === s.kbId ? 1 : 0, select: () => this.setState({ kbId: k.id, model: k.model, menu: null, quick: null }), open: () => this.setState({ kbId: k.id, screen: 'kb' }) })),
+      modelList: this.MODELS.map(m => ({ ...m, dot: m.rt === 'local' ? 'var(--ok)' : 'var(--accent)', checkOp: m.id === s.model ? 1 : 0, select: () => this.setState({ model: m.id, menu: null }) })),
+      menuKb: s.menu === 'kb', menuModel: s.menu === 'model', menuOpen: !!s.menu,
+      toggleKbMenu: () => this.setState(st => ({ menu: st.menu === 'kb' ? null : 'kb' })),
+      toggleModelMenu: () => this.setState(st => ({ menu: st.menu === 'model' ? null : 'model' })),
+      closeMenus: () => this.setState({ menu: null }),
+      hasThread, isEmptyChat: !hasThread, msgs, privacy,
+      cloudWarn: mo.rt === 'cloud' && kbo.rt === 'local',
+      draft: s.draft, onDraft: e => this.setState({ draft: e.target.value }), onKey: e => { if (e.key === 'Enter') this.ask(this.state.draft); },
+      send: () => this.ask(this.state.draft), sendOp: s.draft.trim() ? 1 : 0.45,
+      placeholder: 'Ask anything about ' + kbo.name + '…',
+      quick, startQuick: () => { if (!this.state.quick) this.setState({ quick: { name: 'Acme_MSA_2024.pdf', p: 0, done: false } }); },
+      suggestLabel: qk && qk.done ? 'Try asking about Acme_MSA_2024.pdf' : 'Try asking',
+      suggestions: baseSug.map(q => ({ q, ask: () => this.ask(q) })),
+      srcOpen, src, srcTabs, closeSrc: () => this.setState({ src: null }),
+      shareOpen: s.shareOpen, openShareLast: () => this.setState({ shareOpen: true, shareIdx: null, copied: false }),
+      closeShare: () => this.setState({ shareOpen: false }), stop: e => e.stopPropagation(),
+      copyLink: () => { this.setState({ copied: true }); setTimeout(() => this.setState({ copied: false }), 1500); },
+      copiedLabel: s.copied ? 'Copied' : 'Copy link', shared,
+      docs, docsEmpty: docs.length === 0, docCols: mob ? 'minmax(0,1fr) auto' : 'minmax(0,1fr) 90px 70px 150px',
+      docStats: docs.filter(d => d.status === 'indexed').length + ' of ' + docs.length + ' documents indexed',
+      upload: () => { const u = this.UPLOADS[s.upN % this.UPLOADS.length]; this.log({ cat: 'doc', title: 'Uploaded ' + u.name, detail: kbo.name + ' · ' + u.size, tag: 'Indexing', tone: 'accent', kb: kbo.id }); this.setState(st => ({ upN: st.upN + 1, docs: { ...st.docs, [st.kbId]: [{ ...u, chunks: 0, status: 'parsing', progress: 0 }, ...(st.docs[st.kbId] || [])] } })); },
+      chatWithKb: () => this.setState({ screen: 'chat', model: kbo.model, msgs: [], quick: null }),
+      newKbOpen: s.newKbOpen, openNewKb: () => this.setState({ newKbOpen: true, nkName: '', nkRt: 'local' }), closeNewKb: () => this.setState({ newKbOpen: false }),
+      nkName: s.nkName, onNkName: e => this.setState({ nkName: e.target.value }),
+      nk: { localBorder: s.nkRt === 'local' ? 'var(--accent)' : 'var(--border)', localBg: s.nkRt === 'local' ? 'var(--accent-soft)' : 'var(--surface)', cloudBorder: s.nkRt === 'cloud' ? 'var(--accent)' : 'var(--border)', cloudBg: s.nkRt === 'cloud' ? 'var(--accent-soft)' : 'var(--surface)' },
+      setNkLocal: () => this.setState({ nkRt: 'local' }), setNkCloud: () => this.setState({ nkRt: 'cloud' }),
+      createKb: () => { const id = 'kb' + Date.now(); const name = s.nkName.trim() || 'Untitled knowledge base'; this.setState(st => ({ newKbOpen: false, kbId: id, screen: 'kb', kbs: [...st.kbs, { id, name, desc: 'No description yet', chunks: '0', rt: st.nkRt, model: st.nkRt === 'local' ? 'llama' : 'claude', updated: 'Just now' }], docs: { ...st.docs, [id]: [] } })); },
+      histQ: s.histQ, onHistQ: e => this.setState({ histQ: e.target.value }), histGroups: groups, histEmpty: groups.length === 0, histTabs, histPlaceholder: s.histTab === 'all' ? 'Search all activity' : 'Search ' + this.HTABS.find(t => t[0] === s.histTab)[1].toLowerCase(),
+      tg: { hybrid: tgv('hybrid'), rerank: tgv('rerank'), blockCloud: tgv('blockCloud'), ocr: tgv('ocr'), incl: { bg: s.incl ? 'var(--accent)' : 'var(--border-strong)', j: s.incl ? 'flex-end' : 'flex-start' } }, toggle,
+      num: { size: s.num.size, ov: s.num.ov, k: s.num.k, sizeDown: step('size', -100, 200, 2000), sizeUp: step('size', 100, 200, 2000), ovDown: step('ov', -20, 0, 400), ovUp: step('ov', 20, 0, 400), kDown: step('k', -1, 1, 20), kUp: step('k', 1, 1, 20) },
+      keys: s.keys.map((k, i) => ({ ...k, revoke: () => { this.log({ cat: 'key', title: 'API key revoked', detail: '"' + k.name + '"' }); this.setState(st => ({ keys: st.keys.filter((_, j) => j !== i) })); } })),
+      hasNewKey: !!s.newKey, newKey: s.newKey, dismissKey: () => this.setState({ newKey: null }),
+      createKey: () => { const full = 'rag_sk_' + Math.random().toString(16).slice(2, 10) + Math.random().toString(16).slice(2, 18); this.log({ cat: 'key', title: 'API key created', detail: '"New key" · ' + 'rag_sk_••••' + full.slice(-4) }); this.setState(st => ({ newKey: full, keys: [{ name: 'New key', key: 'rag_sk_••••••••' + full.slice(-4), created: 'Sep 28, 2026', last: 'Never' }, ...st.keys] })); },
+      apiBase: s.apiBase, apiKey: s.apiKey,
+      onApiBase: e => this.setState({ apiBase: e.target.value, saveErr: '' }), onApiKey: e => this.setState({ apiKey: e.target.value, saveErr: '' }),
+      keyInputType: s.showKey ? 'text' : 'password', showKeyLabel: s.showKey ? 'Hide' : 'Show', toggleShowKey: () => this.setState(st => ({ showKey: !st.showKey })),
+      saveOp: s.apiBase.trim() && s.apiKey.trim() && !s.saving ? 1 : 0.5, saveLabel: s.saving ? 'Checking…' : 'Save', saveErr: s.saveErr,
+      saveConn: () => {
+        const base = s.apiBase.trim(), key = s.apiKey.trim();
+        if (s.saving) return;
+        if (!/^https?:\/\/.+/.test(base)) return this.setState({ saveErr: 'API Base must start with http:// or https://' });
+        if (!key) return this.setState({ saveErr: 'Enter an API key.' });
+        this.setState({ saving: true, saveErr: '' });
+        setTimeout(() => { const p = this.provider(base); this.log({ cat: 'key', title: 'Provider connected', detail: p.name + ' · ' + base }); this.setState(st => ({ saving: false, apiBase: '', apiKey: '', showKey: false, conns: [...st.conns, { id: Date.now(), base, key, model: 'auto' }] })); }, 900);
+      },
+      connsEmpty: s.conns.length === 0,
+      conns: s.conns.map(c => { const p = this.provider(c.base); return {
+        name: p.name, base: c.base, count: p.models.length, model: c.model,
+        masked: c.key.length > 8 ? c.key.slice(0, 7) + '••••••••' + c.key.slice(-4) : '••••••••',
+        hint: c.model === 'auto' ? 'Auto picks the best available model for each question.' : 'Always answer with ' + c.model + '.',
+        options: [{ value: 'auto', label: 'Auto (recommended)' }, ...p.models.map(m => ({ value: m, label: m }))],
+        onModel: e => { const v = e.target.value; this.log({ cat: 'key', title: 'Model changed', detail: p.name + ' · ' + (v === 'auto' ? 'Auto' : v) }); this.setState(st => ({ conns: st.conns.map(x => x.id === c.id ? { ...x, model: v } : x) })); },
+        remove: () => { this.log({ cat: 'key', title: 'Provider removed', detail: p.name + ' · ' + c.base }); this.setState(st => ({ conns: st.conns.filter(x => x.id !== c.id) })); }
+      }; }),
+      me: { ...s.me, initials: s.me.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() },
+      pf: (() => { const d = s.pfDraft || s.me, dirty = d.name !== s.me.name || d.email !== s.me.email; return {
+        name: d.name, email: d.email, saved: s.pfSaved, saveOp: dirty ? 1 : 0.45,
+        onName: e => this.setState({ pfDraft: { ...(this.state.pfDraft || this.state.me), name: e.target.value }, pfSaved: false }),
+        onEmail: e => this.setState({ pfDraft: { ...(this.state.pfDraft || this.state.me), email: e.target.value }, pfSaved: false }),
+        save: () => { if (!dirty || !d.name.trim()) return; this.log({ cat: 'settings', title: 'Profile updated', detail: d.name + ' · ' + d.email }); this.setState({ me: { name: d.name.trim(), email: d.email.trim() }, pfDraft: null, pfSaved: true }); }
+      }; })(),
+      pw: { ...s.pw, msgColor: s.pw.ok ? 'var(--ok-text)' : 'var(--err-text)',
+        onCur: e => this.setState({ pw: { ...this.state.pw, cur: e.target.value, msg: '' } }),
+        onNw: e => this.setState({ pw: { ...this.state.pw, nw: e.target.value, msg: '' } }),
+        onCf: e => this.setState({ pw: { ...this.state.pw, cf: e.target.value, msg: '' } }),
+        save: () => { const p = this.state.pw; const err = !p.cur ? 'Enter your current password.' : p.nw.length < 10 ? 'New password needs at least 10 characters.' : p.nw !== p.cf ? "Passwords don't match." : '';
+          if (err) return this.setState({ pw: { ...p, msg: err, ok: false } });
+          this.log({ cat: 'login', title: 'Password changed', detail: 'Chrome on macOS · 203.0.113.24' });
+          this.setState({ pw: { cur: '', nw: '', cf: '', msg: 'Password updated', ok: true } }); } },
+      sessions: s.sessions.map(x => ({ ...x, other: !x.current, revoke: () => { this.log({ cat: 'login', title: 'Session signed out', detail: x.device + ' · ' + x.ip }); this.setState(st => ({ sessions: st.sessions.filter(y => y.id !== x.id) })); } })),
+      hasOtherSessions: s.sessions.some(x => !x.current),
+      signOutOthers: () => { this.log({ cat: 'login', title: 'Signed out all other sessions', detail: (s.sessions.length - 1) + ' sessions ended' }); this.setState(st => ({ sessions: st.sessions.filter(y => y.current) })); },
+      themeSeg: { lightBg: this.theme() === 'light' ? 'var(--surface)' : 'transparent', lightColor: this.theme() === 'light' ? 'var(--text)' : 'var(--muted)', darkBg: this.theme() === 'dark' ? 'var(--surface)' : 'transparent', darkColor: this.theme() === 'dark' ? 'var(--text)' : 'var(--muted)' },
+      setLight: () => this.setState({ themeO: 'light' }), setDark: () => this.setState({ themeO: 'dark' }),
+      defaultKb: s.defaultKb, onDefaultKb: e => this.setState({ defaultKb: e.target.value }),
+      auth: signUp ? { isSignUp: true, showForgot: false, title: 'Create your workspace', sub: 'Set up the admin account for this server.', cta: 'Create account', switchText: 'Already have an account?', switchCta: 'Sign in' } : { isSignUp: false, showForgot: true, title: 'Sign in', sub: 'Welcome back to your knowledge workspace.', cta: 'Sign in', switchText: 'New here?', switchCta: 'Create an account' },
+      toggleAuth: () => this.setState(st => ({ auth: st.auth === 'up' ? 'in' : 'up' })),
+      signIn: () => { this.log({ cat: 'login', title: 'Signed in', detail: 'Chrome on macOS · 203.0.113.24', tag: 'This device', tone: 'ok' }); this.setState({ screen: 'chat', msgs: [], quick: null }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

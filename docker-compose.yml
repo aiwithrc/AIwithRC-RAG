@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    image: aiwithrc-rag:latest
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "8000:8000"
+    volumes:
+      # SQLite DB, Chroma vectors, uploads and the embedding model cache all live here.
+      - ./data:/data
+    extra_hosts:
+      # Lets the container reach Ollama on the host at http://host.docker.internal:11434/v1 (Linux too).
+      - "host.docker.internal:host-gateway"
