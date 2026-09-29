@@ -6,7 +6,7 @@ import { useChats } from '../hooks/useChat';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useMe, useSignOut } from '../hooks/useMe';
 import { useTheme } from '../hooks/useTheme';
-import { IconBook, IconChat, IconClock, IconKey, IconMenu, IconMoon, IconPlus, IconSliders, IconSun } from './icons';
+import { IconBook, IconChat, IconClock, IconKey, IconMenu, IconMoon, IconPlus, IconPrompt, IconSliders, IconSun } from './icons';
 import { Logo, cx } from './ui';
 
 const ShellCtx = createContext<{ openDrawer: () => void }>({ openDrawer: () => {} });
@@ -26,6 +26,7 @@ const NAV = [
   { to: '/kbs', label: 'Knowledge bases', icon: IconBook, end: false },
   { to: '/history', label: 'History', icon: IconClock, end: false },
   { to: '/keys', label: 'API keys', icon: IconKey, end: false },
+  { to: '/prompt', label: 'Prompt', icon: IconPrompt, end: false },
   { to: '/settings', label: 'Settings', icon: IconSliders, end: false },
 ];
 

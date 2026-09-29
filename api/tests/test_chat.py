@@ -203,3 +203,39 @@ def test_parse_followups_is_lenient():
     assert answer.parse_followups('Sure! ["A thing", "B thing?"]', "q") == ["A thing?", "B thing?"]
     assert answer.parse_followups("1. First one\n2. Second one", "q") == ["First one?", "Second one?"]
     assert answer.parse_followups('["q"]', "q") == []
+
+
+def test_prompt_instructions_are_saved_and_used_without_restart(client, setup, model, owner):
+    s = client.get("/api/settings").json()
+    assert s["custom_instructions"] == "" and s["can_edit"] and "cite the passage number" in s["built_in_prompt"]
+
+    r = client.patch("/api/settings", json={"custom_instructions": "  Answer as a numbered list.  "})
+    assert r.status_code == 200 and r.json()["custom_instructions"] == "Answer as a numbered list."
+
+    model.requests.clear()
+    ask(client, setup["chat"]["id"], "How much notice to terminate?")
+    system = next(r for r in model.requests if "Question:" in r["messages"][-1]["content"])["messages"][0]["content"]
+    assert system.startswith(answer.SYSTEM)
+    assert "Additional instructions from this workspace" in system and "Answer as a numbered list." in system
+
+    client.patch("/api/settings", json={"custom_instructions": ""})
+    model.requests.clear()
+    ask(client, setup["chat"]["id"], "How much notice to terminate?")
+    system = next(r for r in model.requests if "Question:" in r["messages"][-1]["content"])["messages"][0]["content"]
+    assert "Additional instructions" not in system
+
+    titles = [e.title for e in SessionLocal().scalars(select(Event).where(Event.category == "settings"))]
+    assert titles == ["Prompt instructions updated", "Prompt instructions cleared"]
+    assert client.patch("/api/settings", json={"custom_instructions": "x" * 4001}).status_code == 422
+
+
+def test_only_owner_edits_prompt(app, client, owner, monkeypatch):
+    from app.config import get_settings
+    from tests.conftest import PASSWORD, make_client
+
+    monkeypatch.setenv("ALLOW_SIGNUP", "true")
+    get_settings.cache_clear()
+    with make_client(app) as member:
+        member.post("/api/auth/signup", json={"name": "Bo", "email": "bo@example.com", "password": PASSWORD})
+        assert member.get("/api/settings").json()["can_edit"] is False
+        assert member.patch("/api/settings", json={"custom_instructions": "hi"}).status_code == 403

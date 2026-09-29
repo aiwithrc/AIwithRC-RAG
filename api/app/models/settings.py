@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -17,3 +17,6 @@ class WorkspaceSettings(Base):
     ocr: Mapped[bool] = mapped_column(Boolean, default=False)
     embedding_provider: Mapped[str] = mapped_column(String(32), default="fastembed")
     embedding_model: Mapped[str] = mapped_column(String(200), default="BAAI/bge-small-en-v1.5")
+    # Addition to the spec: workspace instructions appended to the built-in answering rules
+    # (edited on the Prompt screen; read on every question, so no restart is needed).
+    custom_instructions: Mapped[str] = mapped_column(Text, default="", server_default="")

@@ -10,6 +10,7 @@ import KbDetail from './routes/KbDetail';
 import KnowledgeBases from './routes/KnowledgeBases';
 import Login from './routes/Login';
 import Profile from './routes/Profile';
+import PromptPage from './routes/Prompt';
 import Settings from './routes/Settings';
 import SharePublic from './routes/SharePublic';
 
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="kbs/:id" element={<KbDetail />} />
         <Route path="history" element={<History />} />
         <Route path="keys" element={<ApiKeys />} />
+        <Route path="prompt" element={<PromptPage />} />
         <Route path="settings" element={<Settings />} />
         <Route path="profile" element={<Profile />} />
         <Route path="*" element={<NotFound />} />

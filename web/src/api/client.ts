@@ -132,6 +132,22 @@ export interface Connection {
   created_at: string;
 }
 
+export interface WorkspaceSettings {
+  chunk_size: number;
+  chunk_overlap: number;
+  top_k: number;
+  hybrid: boolean;
+  rerank: boolean;
+  keep_local: boolean;
+  ocr: boolean;
+  embedding_provider: string;
+  embedding_model: string;
+  custom_instructions: string;
+  built_in_prompt: string;
+  max_instructions: number;
+  can_edit: boolean;
+}
+
 export interface Citation {
   n: number;
   chunk_id: string;
@@ -274,6 +290,9 @@ export const endpoints = {
   documents: (kbId: string) => api<Doc[]>(`/kbs/${kbId}/documents`),
   deleteDocument: (id: string) => api<void>(`/documents/${id}`, { method: 'DELETE' }),
   retryDocument: (id: string) => api<Doc>(`/documents/${id}/retry`, { method: 'POST' }),
+  settings: () => api<WorkspaceSettings>('/settings'),
+  patchSettings: (b: Partial<Pick<WorkspaceSettings, 'custom_instructions'>>) =>
+    api<WorkspaceSettings>('/settings', { method: 'PATCH', body: b }),
   chats: () => api<ChatSummary[]>('/chats'),
   createChat: (kb_id: string) => api<ChatSummary>('/chats', { method: 'POST', body: { kb_id } }),
   chat: (id: string) => api<ChatDetail>(`/chats/${id}`),

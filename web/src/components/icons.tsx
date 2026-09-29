@@ -144,3 +144,9 @@ export const IconClose = (p: P) => (
     <path d="M18 6 6 18M6 6l12 12" />
   </Svg>
 );
+export const IconPrompt = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 5h16M4 10h16M4 15h10" />
+    <path d="m16 19 2 2 4-4" />
+  </Svg>
+);

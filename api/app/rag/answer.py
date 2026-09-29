@@ -28,6 +28,21 @@ Rules:
 - If the passages don't contain the answer, say so plainly in one sentence and don't cite anything.
 - Answer in the language of the question. No preamble or headings, and don't say "according to the passages"."""
 
+MAX_INSTRUCTIONS = 4000
+
+
+def system_prompt(instructions: str = "") -> str:
+    """Built-in rules, plus the workspace's own instructions (Prompt screen) when set.
+    The built-in rules come first and win on conflict: citations and the source panel depend on them."""
+    extra = (instructions or "").strip()[:MAX_INSTRUCTIONS]
+    if not extra:
+        return SYSTEM
+    return (
+        f"{SYSTEM}\n\nAdditional instructions from this workspace (follow them unless they conflict with the rules "
+        f"above; always keep citing passages as [n]):\n{extra}"
+    )
+
+
 REWRITE_SYSTEM = """Rewrite the user's latest question as one standalone question that can be understood without the conversation. Replace pronouns like "he", "it" or "that" with what they refer to. If it is already standalone, return it unchanged. Reply with the question only."""
 
 FOLLOWUP_SYSTEM = """Suggest follow-up questions a reader might ask next, answerable from the passages. Reply with only a JSON array of 3 short questions (under 12 words each), and nothing else."""
@@ -44,6 +59,7 @@ class Settings:
     hybrid: bool = True
     rerank: bool = True
     embedding_model: str | None = None
+    instructions: str = ""
 
 
 @dataclass
@@ -162,7 +178,8 @@ async def run(
     user = f"Passages:\n\n{format_passages(passages)}\n\nQuestion: {standalone}"
     raw = ""
     # Generous budget: some models reason before answering even when asked not to.
-    async for piece in stream_chat(target, SYSTEM, [{"role": "user", "content": user}], max_tokens=3000):
+    system = system_prompt(s.instructions)
+    async for piece in stream_chat(target, system, [{"role": "user", "content": user}], max_tokens=3000):
         if piece is THINKING:
             yield "status", {"stage": "thinking"}
             continue

@@ -152,7 +152,10 @@ def _settings(db: Db, workspace_id: str) -> answer.Settings:
     ws = db.get(WorkspaceSettings, workspace_id)
     if ws is None:
         return answer.Settings()
-    return answer.Settings(top_k=ws.top_k, hybrid=ws.hybrid, rerank=ws.rerank, embedding_model=ws.embedding_model)
+    return answer.Settings(
+        top_k=ws.top_k, hybrid=ws.hybrid, rerank=ws.rerank, embedding_model=ws.embedding_model,
+        instructions=ws.custom_instructions or "",
+    )
 
 
 def _history(db: Db, chat_id: str, before: Message | None = None) -> list[dict]:
