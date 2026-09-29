@@ -46,6 +46,9 @@ class MessageOut(BaseModel):
     citations: list[CitationOut]
     followups: list[str]
     error: str | None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    tokens_estimated: bool = False
     created_at: datetime
 
 

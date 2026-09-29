@@ -79,11 +79,12 @@ def sse(resp: httpx.Response) -> list[tuple[str, dict]]:
     return out
 
 
-def ask(client, chat_id, content, **kw):
+def ask(client, chat_id, content, *, with_usage=False, **kw):
+    """SSE events of one question; the final "usage" event is left out unless asked for."""
     r = client.post(f"/api/chats/{chat_id}/messages", json={"content": content, **kw})
     assert r.status_code == 200, r.text
     assert r.headers["content-type"].startswith("text/event-stream")
-    return sse(r)
+    return [e for e in sse(r) if with_usage or e[0] != "usage"]
 
 
 def test_streams_cited_answer(client, setup, model):
@@ -180,7 +181,7 @@ def test_model_error_is_saved_and_regenerate_recovers(client, setup, model):
 
     model.fail_with = None
     r = client.post(f"/api/messages/{failed['id']}/regenerate", json={})
-    kind, data = sse(r)[-2]
+    kind, data = next((k, d) for k, d in sse(r) if k == "done")
     assert kind == "done" and data["message"]["id"] == failed["id"] and data["message"]["error"] is None
     assert len(client.get(f"/api/chats/{setup['chat']['id']}").json()["messages"]) == 2
 
@@ -272,3 +273,53 @@ def test_smalltalk_gets_a_friendly_reply_without_search(client, setup, model):
     assert model.requests == []  # no search, no model call
     msg = next(d for e, d in ask(client, setup["chat"]["id"], "thank you!") if e == "done")["message"]
     assert msg["content"].startswith("You're welcome") and msg["followups"] == []
+
+
+
+def test_tokens_used_are_reported_and_saved(client, setup, model):
+    evs = ask(client, setup["chat"]["id"], "How much notice to terminate?", with_usage=True)
+    kind, usage = evs[-1]
+    assert kind == "usage" and usage["prompt_tokens"] > 50 and usage["completion_tokens"] > 5
+    assert usage["estimated"] is True  # the fake server doesn't report counts, so they're counted locally
+    done = next(d for k, d in evs if k == "done")["message"]
+    assert 0 < done["prompt_tokens"] <= usage["prompt_tokens"]  # follow-ups add to the count afterwards
+    saved = client.get(f"/api/chats/{setup['chat']['id']}").json()["messages"][-1]
+    assert (saved["prompt_tokens"], saved["completion_tokens"], saved["tokens_estimated"]) == (
+        usage["prompt_tokens"], usage["completion_tokens"], True)
+    hi = next(d for k, d in ask(client, setup["chat"]["id"], "hi") if k == "done")["message"]
+    assert hi["prompt_tokens"] is None  # no model call
+
+
+def test_server_reported_usage_is_used():
+    import asyncio
+
+    from app.providers import chat as pchat
+
+    def openai(req):
+        body = json.loads(req.content)
+        assert body["stream_options"] == {"include_usage": True}
+        lines = [f"data: {json.dumps({'choices': [{'delta': {'content': 'Hello'}}]})}",
+                 f"data: {json.dumps({'choices': [], 'usage': {'prompt_tokens': 1234, 'completion_tokens': 56}})}",
+                 "data: [DONE]"]
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, content="\n\n".join(lines).encode())
+
+    def anthropic(req):
+        evs = [{"type": "message_start", "message": {"usage": {"input_tokens": 900, "cache_read_input_tokens": 100}}},
+               {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "Hi"}},
+               {"type": "message_delta", "usage": {"output_tokens": 7}}]
+        return httpx.Response(200, headers={"content-type": "text/event-stream"},
+                              content="\n\n".join(f"data: {json.dumps(e)}" for e in evs).encode())
+
+    async def run(handler, kind):
+        pchat.transport = httpx.MockTransport(handler)
+        try:
+            u = pchat.Usage()
+            text = await pchat.complete(pchat.ChatTarget("http://x/v1", "k", kind, "m"), "sys", [{"role": "user", "content": "q"}], usage=u)
+            return text, u
+        finally:
+            pchat.transport = None
+
+    text, u = asyncio.run(run(openai, "openai_compat"))
+    assert text == "Hello" and (u.prompt_tokens, u.completion_tokens, u.estimated) == (1234, 56, False)
+    text, u = asyncio.run(run(anthropic, "anthropic"))
+    assert text == "Hi" and (u.prompt_tokens, u.completion_tokens, u.estimated) == (1000, 7, False)

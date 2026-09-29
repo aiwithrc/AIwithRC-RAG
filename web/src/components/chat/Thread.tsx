@@ -182,6 +182,7 @@ function AssistantMessage({
             <RegenIcon />
             Regenerate
           </button>
+          <TokenCount m={m} className="ml-auto" />
         </div>
       )}
 
@@ -201,6 +202,41 @@ function AssistantMessage({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+const fmt = (n: number) => n.toLocaleString();
+
+/** "~1,234 tokens" with the in/out split on hover and for screen readers. "~" marks a local estimate. */
+function TokenCount({ m, className }: { m: Message; className?: string }) {
+  if (m.prompt_tokens == null || m.completion_tokens == null) return null;
+  const total = m.prompt_tokens + m.completion_tokens;
+  const approx = m.tokens_estimated ? '~' : '';
+  const detail = `${approx}${fmt(m.prompt_tokens)} in (question, passages, chat) · ${approx}${fmt(m.completion_tokens)} out (answer)${m.tokens_estimated ? ' · estimated: the model server did not report its own count' : ''}`;
+  return (
+    <span className={cx('whitespace-nowrap font-mono text-[11.5px] text-muted', className)} title={detail} aria-label={`Tokens used: ${detail}`}>
+      {approx}
+      {fmt(total)} tokens
+    </span>
+  );
+}
+
+/** Running total for the whole chat, under the last message. */
+function ChatTokens({ messages }: { messages: Message[] }) {
+  const used = messages.filter((m) => m.role === 'assistant' && m.prompt_tokens != null && m.completion_tokens != null);
+  if (!used.length || messages.some((m) => m.stage)) return null;
+  const input = used.reduce((n, m) => n + (m.prompt_tokens ?? 0), 0);
+  const output = used.reduce((n, m) => n + (m.completion_tokens ?? 0), 0);
+  const approx = used.some((m) => m.tokens_estimated) ? '~' : '';
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-2 border-t border-border pt-3 text-center text-[12px] text-muted">
+      <span>
+        This chat used <span className="font-mono text-text">{approx}{fmt(input + output)}</span> tokens
+      </span>
+      <span className="font-mono">
+        ({approx}{fmt(input)} in · {approx}{fmt(output)} out · {used.length} answer{used.length === 1 ? '' : 's'})
+      </span>
     </div>
   );
 }
@@ -249,6 +285,7 @@ export function Thread({
           />
         ),
       )}
+      <ChatTokens messages={messages} />
     </div>
   );
 }

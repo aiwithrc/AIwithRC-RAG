@@ -226,6 +226,10 @@ export interface Message {
   citations: Citation[];
   followups: string[];
   error: string | null;
+  /** Tokens used for this answer (rewrite + answer + follow-ups); null when no model was called. */
+  prompt_tokens?: number | null;
+  completion_tokens?: number | null;
+  tokens_estimated?: boolean;
   created_at: string;
   /** Client-only: set while the answer is streaming. */
   stage?: 'searching' | 'thinking' | 'answering';
@@ -252,6 +256,7 @@ export interface StreamHandlers {
   onToken?: (text: string) => void;
   onDone?: (message: Message) => void;
   onFollowups?: (messageId: string, followups: string[]) => void;
+  onUsage?: (messageId: string, usage: { prompt_tokens: number; completion_tokens: number; estimated: boolean }) => void;
   onError?: (detail: string, message?: Message) => void;
 }
 
@@ -294,7 +299,9 @@ export async function streamSSE(path: string, body: Json, h: StreamHandlers, sig
     else if (event === 'done') {
       finished = true;
       h.onDone?.(d.message);
-    } else if (event === 'followups') h.onFollowups?.(d.message_id, d.followups); else if (event === 'error') {
+    } else if (event === 'followups') h.onFollowups?.(d.message_id, d.followups);
+    else if (event === 'usage') h.onUsage?.(d.message_id, d);
+    else if (event === 'error') {
       finished = true;
       h.onError?.(d.detail, d.message);
     }

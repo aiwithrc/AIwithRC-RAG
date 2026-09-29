@@ -118,6 +118,9 @@ install [OCRmyPDF](https://ocrmypdf.readthedocs.io/) with Tesseract on the serve
 6. **Confidence** is high when the answer cites something and either the best passage scores ≥ 0.75, or the
    cited best passage scores ≥ 0.55 and beats the next one by ≥ 0.2 (a clear winner); otherwise low.
 7. **Follow-up suggestions** arrive just after the answer.
+8. **Tokens used** show under each answer (rewrite + answer + follow-ups, input and output), with a total for
+   the chat at the bottom. They're the model server's own counts (LM Studio, OpenAI, Anthropic report them);
+   a `~` marks a local estimate when a server doesn't.
 
 **How much text can a question use?** Documents can be any length and you can upload as many as you like; only
 what each question needs is sent to the model. The budget is capped automatically to the model's context window:

@@ -30,6 +30,30 @@ class ChatTarget:
     local: bool = False  # LM Studio / Ollama / vLLM on this machine or network
 
 
+@dataclass
+class Usage:
+    """Tokens used by one or more model calls. `estimated` when a server didn't report its own counts."""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    estimated: bool = False
+
+    def add(self, prompt: int, completion: int, estimated: bool) -> None:
+        self.prompt_tokens += prompt
+        self.completion_tokens += completion
+        self.estimated = self.estimated or estimated
+
+    def dict(self) -> dict:
+        return {"prompt_tokens": self.prompt_tokens, "completion_tokens": self.completion_tokens,
+                "estimated": self.estimated}
+
+
+def _estimate_prompt(system: str, messages: list[dict]) -> int:
+    from app.rag.chunk import count_tokens
+
+    return count_tokens(system) + sum(count_tokens(m["content"]) + 4 for m in messages) + 3
+
+
 class _Thinking(str):
     """Yielded once by `stream_chat` when the model starts reasoning on a separate channel."""
 
@@ -92,8 +116,9 @@ def _error_from(r_text: str, status: int) -> str:
 
 
 def _prepare(
-    target: ChatTarget, system: str, messages: list[dict], max_tokens: int, stream: bool, no_reasoning: bool = True
+    target: ChatTarget, system: str, messages: list[dict], max_tokens: int, stream: bool, extras: bool = True
 ) -> tuple[str, dict, dict]:
+    """`extras`: optional fields some servers reject (reasoning_effort, stream_options); dropped on the retry."""
     if _wants_no_think(target.model):
         system = system + "\n/no_think"
     if target.kind == "anthropic":
@@ -112,7 +137,9 @@ def _prepare(
             "temperature": 0.2,
             "stream": stream,
         }
-        if target.local and no_reasoning:
+        if stream and extras:
+            body["stream_options"] = {"include_usage": True}  # token counts in the last chunk
+        if target.local and extras:
             # Local reasoning models (e.g. Qwen3.5 in LM Studio) otherwise spend hundreds of tokens thinking
             # before answering. Answering from given passages doesn't need it. OpenAI's API rejects "none"
             # for non-reasoning models, so this is only sent to local servers (and retried without on 400).
@@ -126,30 +153,41 @@ def _connect_error(target: ChatTarget) -> ProviderError:
     )
 
 
-async def stream_chat(target: ChatTarget, system: str, messages: list[dict], max_tokens: int = 1024) -> AsyncIterator[str]:
-    """Yield answer text as it arrives (thinking removed). Yields THINKING once if the model reasons first."""
+async def stream_chat(
+    target: ChatTarget, system: str, messages: list[dict], max_tokens: int = 1024, usage: Usage | None = None
+) -> AsyncIterator[str]:
+    """Yield answer text as it arrives (thinking removed). Yields THINKING once if the model reasons first.
+    Adds the call's token counts to `usage` (the server's own, or an estimate)."""
     think = ThinkFilter()
     reasoning_seen = False
+    meter: dict = {}
+    produced: list[str] = []
     try:
         async with _client() as c:
             for attempt in (0, 1):
-                url, headers, body = _prepare(target, system, messages, max_tokens, stream=True, no_reasoning=attempt == 0)
+                url, headers, body = _prepare(target, system, messages, max_tokens, stream=True, extras=attempt == 0)
                 async with c.stream("POST", url, headers=headers, json=body) as r:
                     if r.status_code >= 400:
                         text = (await r.aread()).decode(errors="replace")
-                        if attempt == 0 and "reasoning_effort" in body and r.status_code in (400, 422):
-                            continue  # server doesn't know reasoning_effort: retry without it
+                        if attempt == 0 and r.status_code in (400, 422) and (
+                            "reasoning_effort" in body or "stream_options" in body
+                        ):
+                            continue  # server doesn't know an optional field: retry without them
                         msg = _error_from(text, r.status_code)
                         raise ProviderError(context_error(msg) or msg)
-                    async for piece in _read_stream(r, target, think):
+                    async for piece in _read_stream(r, target, think, meter):
                         if piece is THINKING:
                             if not reasoning_seen:
                                 reasoning_seen = True
                                 yield THINKING
                             continue
+                        produced.append(piece)
                         yield piece
                     if tail := think.flush():
+                        produced.append(tail)
                         yield tail
+                    if usage is not None:
+                        _record(usage, meter, system, messages, produced)
                     return
     except httpx.ConnectError as e:
         raise _connect_error(target) from e
@@ -159,8 +197,19 @@ async def stream_chat(target: ChatTarget, system: str, messages: list[dict], max
         raise ProviderError(f"Lost the connection to the model server ({e.__class__.__name__}).") from e
 
 
-async def _read_stream(r: httpx.Response, target: ChatTarget, think: ThinkFilter) -> AsyncIterator[str]:
-    """Parse one SSE response into answer text; yields THINKING for reasoning-channel chunks."""
+def _record(usage: Usage, meter: dict, system: str, messages: list[dict], produced: list[str]) -> None:
+    if "in" in meter and "out" in meter:
+        usage.add(meter["in"], meter["out"], estimated=False)
+        return
+    from app.rag.chunk import count_tokens
+
+    usage.add(meter.get("in") or _estimate_prompt(system, messages),
+              meter.get("out") or count_tokens("".join(produced)), estimated=True)
+
+
+async def _read_stream(r: httpx.Response, target: ChatTarget, think: ThinkFilter, meter: dict) -> AsyncIterator[str]:
+    """Parse one SSE response into answer text; yields THINKING for reasoning-channel chunks.
+    Token counts the server reports go into `meter` ("in", "out")."""
     async for line in r.aiter_lines():
         if not line.startswith("data:"):
             continue
@@ -174,6 +223,12 @@ async def _read_stream(r: httpx.Response, target: ChatTarget, think: ThinkFilter
         if target.kind == "anthropic":
             if evt.get("type") == "error":
                 raise ProviderError(evt.get("error", {}).get("message", "The model returned an error."))
+            if evt.get("type") == "message_start":
+                u = evt.get("message", {}).get("usage") or {}
+                meter["in"] = sum(u.get(k) or 0 for k in ("input_tokens", "cache_creation_input_tokens",
+                                                            "cache_read_input_tokens"))
+            elif evt.get("type") == "message_delta" and (evt.get("usage") or {}).get("output_tokens") is not None:
+                meter["out"] = evt["usage"]["output_tokens"]
             delta = evt.get("delta", {}) if evt.get("type") == "content_block_delta" else {}
             if delta.get("type") == "thinking_delta":
                 yield THINKING
@@ -184,6 +239,9 @@ async def _read_stream(r: httpx.Response, target: ChatTarget, think: ThinkFilter
                 err = evt["error"]
                 msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
                 raise ProviderError(context_error(msg) or msg)
+            if isinstance(evt.get("usage"), dict) and evt["usage"].get("prompt_tokens") is not None:
+                meter["in"] = evt["usage"]["prompt_tokens"]
+                meter["out"] = evt["usage"].get("completion_tokens") or 0
             delta = (evt.get("choices") or [{}])[0].get("delta") or {}
             if delta.get("reasoning_content") or delta.get("reasoning"):
                 yield THINKING  # separate reasoning channel (LM Studio, vLLM, DeepSeek): never shown
@@ -192,9 +250,11 @@ async def _read_stream(r: httpx.Response, target: ChatTarget, think: ThinkFilter
             yield out
 
 
-async def complete(target: ChatTarget, system: str, messages: list[dict], max_tokens: int = 200) -> str:
+async def complete(
+    target: ChatTarget, system: str, messages: list[dict], max_tokens: int = 200, usage: Usage | None = None
+) -> str:
     """One-shot completion (thinking removed)."""
-    parts = [p async for p in stream_chat(target, system, messages, max_tokens) if p is not THINKING]
+    parts = [p async for p in stream_chat(target, system, messages, max_tokens, usage) if p is not THINKING]
     return "".join(parts).strip()
 
 

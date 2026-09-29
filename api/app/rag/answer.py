@@ -14,7 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from app.db import SessionLocal
 from app.models import Document
 from app.providers.base import ProviderError
-from app.providers.chat import THINKING, ChatTarget, complete, context_window, stream_chat
+from app.providers.chat import THINKING, ChatTarget, Usage, complete, context_window, stream_chat
 from app.rag import cite
 from app.rag.retrieve import Passage, coverage, retrieve
 
@@ -185,6 +185,7 @@ class Result:
     citations: list[dict] = field(default_factory=list)
     followups: list[str] = field(default_factory=list)
     standalone: str = ""
+    usage: dict | None = None  # tokens used so far (rewrite + answer); follow-ups add theirs later
 
 
 def format_passages(passages: list[Passage]) -> str:
@@ -228,7 +229,7 @@ def needs_rewrite(question: str) -> bool:
     return len(question.split()) <= 4 or bool(_REFERS_BACK.search(question))
 
 
-async def rewrite(target: ChatTarget, history: list[dict], question: str) -> str:
+async def rewrite(target: ChatTarget, history: list[dict], question: str, usage: Usage | None = None) -> str:
     """Turn a follow-up into a standalone question using the last few messages."""
     if not history or not needs_rewrite(question):
         return question
@@ -237,7 +238,7 @@ async def rewrite(target: ChatTarget, history: list[dict], question: str) -> str
         out = await complete(
             target, REWRITE_SYSTEM,
             [{"role": "user", "content": f"Conversation:\n{convo}\n\nLatest question: {question}"}],
-            max_tokens=80,
+            max_tokens=80, usage=usage,
         )
     except ProviderError:
         return question
@@ -245,12 +246,14 @@ async def rewrite(target: ChatTarget, history: list[dict], question: str) -> str
     return out if 3 < len(out) <= 300 else question
 
 
-async def suggest_followups(target: ChatTarget, passages: list[Passage], question: str) -> list[str]:
+async def suggest_followups(
+    target: ChatTarget, passages: list[Passage], question: str, usage: Usage | None = None
+) -> list[str]:
     try:
         text = await complete(
             target, FOLLOWUP_SYSTEM,
             [{"role": "user", "content": f"Passages:\n\n{format_passages(passages[:3])}\n\nAlready asked: {question}"}],
-            max_tokens=120,
+            max_tokens=120, usage=usage,
         )
     except ProviderError:
         return []
@@ -298,8 +301,9 @@ async def run(
         )
         return
 
+    usage = Usage()
     yield "status", {"stage": "searching"}
-    standalone = await rewrite(target, history, question)
+    standalone = await rewrite(target, history, question, usage)
     overview = is_overview(standalone)
     budget = budget_for(await context_window(target), s.context_tokens)
     passages = await run_in_threadpool(_retrieve, kb_id, standalone, s, budget, overview)
@@ -308,7 +312,7 @@ async def run(
         yield "result", Result(
             content=f"There are no indexed documents in {kb_name} yet. Upload a file on the knowledge base page, "
             "then ask again.",
-            confidence=None, standalone=standalone,
+            confidence=None, standalone=standalone, usage=usage.dict() if usage.prompt_tokens else None,
         )
         return
 
@@ -318,6 +322,7 @@ async def run(
         yield "result", Result(
             content=NOT_FOUND, confidence="low",
             citations=[cite.closest_citation(passages[0], standalone).dict()], standalone=standalone,
+            usage=usage.dict() if usage.prompt_tokens else None,
         )
         return
 
@@ -334,7 +339,7 @@ async def run(
     raw = ""
     # Generous budget: long structured answers, and some models reason first even when asked not to.
     system = system_prompt(s.instructions)
-    async for piece in stream_chat(target, system, messages, max_tokens=4000):
+    async for piece in stream_chat(target, system, messages, max_tokens=4000, usage=usage):
         if piece is THINKING:
             yield "status", {"stage": "thinking"}
             continue
@@ -347,8 +352,9 @@ async def run(
     conf = "high" if overview and len(citations) >= 2 else cite.confidence(passages, citations)
     yield "result", Result(
         content=content, confidence=conf,
-        citations=[c.dict() for c in citations], standalone=standalone,
+        citations=[c.dict() for c in citations], standalone=standalone, usage=usage.dict(),
     )
     # Follow-ups come after the answer is saved and shown, so they never delay it.
     if citations:
-        yield "followups", await suggest_followups(target, passages, standalone)
+        yield "followups", await suggest_followups(target, passages, standalone, usage)
+        yield "usage", usage.dict()

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base, utcnow
@@ -35,6 +35,10 @@ class Message(Base):
     followups_json: Mapped[str] = mapped_column(Text, default="[]")
     # Addition to the spec: why an answer failed (model unreachable, …), so the thread can show it.
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Tokens used to produce this answer (question rewrite, answer and follow-ups). None: no model call.
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tokens_estimated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = created_at_column()
 
 

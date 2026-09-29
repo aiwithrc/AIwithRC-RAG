@@ -6,6 +6,7 @@ POST /chats/{id}/messages and POST /messages/{id}/regenerate answer over Server-
   event: token   {"t": "..."}                        (answer text as it streams, <think> removed)
   event: done    {"message": MessageOut}             (final content with renumbered citations)
   event: followups {"message_id", "followups": [...]} (after done; suggested next questions)
+  event: usage     {"message_id", "prompt_tokens", "completion_tokens", "estimated"} (after follow-ups; final count)
   event: error   {"message": MessageOut, "detail"}   (saved with its error so the thread can show it)
 """
 
@@ -48,7 +49,8 @@ def message_out(m: Message, conns: dict[str, ProviderConnection] | None = None) 
         id=m.id, role=m.role, content=m.content, model=m.model, connection_id=m.connection_id,
         connection_name=conn.name if conn else None, runtime=runtime_for(conn.api_base) if conn else None,
         confidence=m.confidence, citations=json.loads(m.citations_json or "[]"),
-        followups=json.loads(m.followups_json or "[]"), error=m.error, created_at=m.created_at,
+        followups=json.loads(m.followups_json or "[]"), error=m.error, prompt_tokens=m.prompt_tokens,
+        completion_tokens=m.completion_tokens, tokens_estimated=m.tokens_estimated, created_at=m.created_at,
     )
 
 
@@ -213,6 +215,9 @@ async def _answer_stream(
             elif kind == "followups" and saved is not None and data:
                 await run_in_threadpool(_save_followups, saved.id, data)
                 yield _sse("followups", {"message_id": saved.id, "followups": data})
+            elif kind == "usage" and saved is not None and data:
+                await run_in_threadpool(_save_usage, saved.id, data)
+                yield _sse("usage", {"message_id": saved.id, **data})
         if saved is not None:
             return
     except ProviderError as e:
@@ -248,11 +253,13 @@ def _save(
         if result is not None and error is None:
             msg.content, msg.confidence, msg.error = result.content, result.confidence, None
             msg.citations_json, msg.followups_json = json.dumps(result.citations), json.dumps(result.followups)
+            _set_usage(msg, result.usage)
         else:
             from app.rag.cite import strip_think
 
             msg.content, msg.confidence, msg.error = strip_think(streamed), None, error
             msg.citations_json, msg.followups_json = "[]", "[]"
+            _set_usage(msg, None)
         chat = db.get(Chat, chat_id)
         if chat is not None:
             chat.updated_at = utcnow()
@@ -261,6 +268,23 @@ def _save(
         db.commit()
         db.refresh(msg)
         return message_out(msg, {conn.id: conn})
+
+
+def _set_usage(msg: Message, usage: dict | None) -> None:
+    if usage:
+        msg.prompt_tokens, msg.completion_tokens = usage["prompt_tokens"], usage["completion_tokens"]
+        msg.tokens_estimated = usage["estimated"]
+    else:
+        msg.prompt_tokens = msg.completion_tokens = None
+        msg.tokens_estimated = False
+
+
+def _save_usage(message_id: str, usage: dict) -> None:
+    with SessionLocal() as db:
+        msg = db.get(Message, message_id)
+        if msg is not None:
+            _set_usage(msg, usage)
+            db.commit()
 
 
 def _save_followups(message_id: str, followups: list[str]) -> None:

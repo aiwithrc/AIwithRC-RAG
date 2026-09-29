@@ -69,6 +69,19 @@ function run(qc: QueryClient, chatId: string, path: string, body: Body, targetId
       qc.setQueryData<ChatDetail>(chatKey(chatId), (old) =>
         old ? { ...old, messages: old.messages.map((m) => (m.id === id ? { ...m, followups } : m)) } : old,
       ),
+    onUsage: (id, u) =>
+      qc.setQueryData<ChatDetail>(chatKey(chatId), (old) =>
+        old
+          ? {
+              ...old,
+              messages: old.messages.map((m) =>
+                m.id === id
+                  ? { ...m, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, tokens_estimated: u.estimated }
+                  : m,
+              ),
+            }
+          : old,
+      ),
     onError: (detail, msg) => {
       if (msg) {
         settle({ ...msg, error: detail });
