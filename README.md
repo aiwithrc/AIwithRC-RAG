@@ -3,8 +3,9 @@
 Upload documents, ask questions, and get answers that cite the exact passage they came from.
 Self-hosted, MIT licensed, runs on a laptop or a small VPS (2–4 GB RAM, no GPU).
 
-> **Status: phase 1 of 6 (skeleton).** Sign-up, sign-in, sessions, profile, theme and the app shell work.
-> Document upload, answering, sharing and the activity log arrive in the next phases (see [Roadmap](#roadmap)).
+> **Status: phase 2 of 6 (ingest).** Sign-in, profile, model provider connections, knowledge bases and
+> document upload with live indexing work. Answering, sharing and the activity log arrive in the next phases
+> (see [Roadmap](#roadmap)).
 
 ## Quick start (Docker)
 
@@ -56,6 +57,31 @@ uv run python -m app.cli reset-password --email you@example.com
 In Docker: `docker compose exec app python -m app.cli reset-password --email you@example.com`.
 Resetting a password also signs that user out everywhere. This is the v1 answer to "Forgot password?".
 
+## Connecting a model
+
+Open **API keys** and add a connection. Any OpenAI-compatible API works; Anthropic is supported natively.
+
+| Provider | API Base (app running in Docker) | API Key |
+|---|---|---|
+| LM Studio on your computer | `http://host.docker.internal:1234/v1` | leave empty |
+| Ollama on your computer | `http://host.docker.internal:11434/v1` | leave empty |
+| OpenAI | `https://api.openai.com/v1` | `sk-…` |
+| Anthropic | `https://api.anthropic.com/v1` | `sk-ant-…` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `sk-or-…` |
+
+Running the API outside Docker? Use `http://localhost:…` instead of `host.docker.internal`.
+
+## Documents and indexing
+
+Upload PDF, DOCX, MD, TXT, CSV or XLSX files (50 MB each by default) on a knowledge base's page, or drop one
+on the empty chat screen. Each file is parsed (PDFs keep page numbers, Word and Markdown keep their headings),
+split into ~800-token passages along sentence boundaries, embedded **on this server** with
+`BAAI/bge-small-en-v1.5`, and stored in Chroma (vectors) and SQLite FTS5 (keywords). The Docker image ships
+with the embedding model, so indexing works without internet access.
+
+Scanned PDFs have no text layer and fail with "No text layer found. Turn on OCR in Settings." OCR is optional:
+install [OCRmyPDF](https://ocrmypdf.readthedocs.io/) with Tesseract on the server and turn on OCR in Settings.
+
 ## Configuration
 
 All settings are environment variables; see [`.env.example`](.env.example) for the full list.
@@ -89,7 +115,7 @@ design/  Clickable prototype, the source of truth for the UI (open AIwithRC-RAG.
 ## Roadmap
 
 1. **Skeleton** ✅ auth, sessions, app shell, light/dark theme, Docker
-2. **Ingest:** knowledge bases, uploads, parsing, chunking, local embeddings, live indexing status
+2. **Ingest** ✅ knowledge bases, uploads, parsing, chunking, local embeddings, live indexing status
 3. **Ask:** provider connections, hybrid retrieval + rerank, streaming cited answers, source panel
 4. **Hook:** drop-to-answer first run, suggested questions, shareable public answers
 5. **History, Settings, Profile:** activity log, CSV export, workspace settings, re-index

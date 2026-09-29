@@ -14,12 +14,22 @@ def app(tmp_path, monkeypatch):
     monkeypatch.setenv("ALLOW_SIGNUP", "false")
     monkeypatch.setenv("APP_SECRET", "test-secret")
     monkeypatch.setenv("WEB_DIST", str(tmp_path / "no-dist"))
+    monkeypatch.setenv("START_WORKER", "false")  # tests run jobs with queue.process_all()
     get_settings.cache_clear()
     login_limiter.reset()
+
+    from app.rag import embed, store
+    from tests.fixtures import FakeEmbedder
+
+    store.reset_chroma_client()
+    embed.clear_embedders()
+    embed.set_embedder(get_settings().embedding_model, FakeEmbedder())
 
     from app.main import create_app
 
     yield create_app()
+    store.reset_chroma_client()
+    embed.clear_embedders()
     get_settings.cache_clear()
 
 

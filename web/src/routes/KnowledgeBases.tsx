@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { Topbar } from '../components/AppShell';
 import { IconPlus } from '../components/icons';
+import { NewKbDialog } from '../components/KbDialogs';
 import { Button, Page, PageHeader, Pill, Spinner } from '../components/ui';
 import { useKbs } from '../hooks/useKbs';
 import { relativeTime } from '../lib/time';
@@ -9,6 +11,7 @@ import { relativeTime } from '../lib/time';
 export default function KnowledgeBases() {
   const { data: kbs, isLoading, error } = useKbs();
   const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
 
   return (
     <>
@@ -18,7 +21,7 @@ export default function KnowledgeBases() {
           title="Knowledge bases"
           sub="Each knowledge base has its own documents and model. Local ones are never sent off this server."
           action={
-            <Button variant="primary" className="h-[38px] text-[14px]" disabled title="Available once document upload lands">
+            <Button variant="primary" className="h-[38px] text-[14px]" onClick={() => setCreating(true)}>
               <IconPlus />
               New knowledge base
             </Button>
@@ -50,6 +53,7 @@ export default function KnowledgeBases() {
             </button>
           ))}
         </div>
+        <NewKbDialog open={creating} onClose={() => setCreating(false)} />
       </Page>
     </>
   );

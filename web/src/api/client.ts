@@ -72,9 +72,50 @@ export interface Kb {
   description: string;
   runtime: 'local' | 'cloud';
   default_model: string;
+  default_connection_id: string | null;
   doc_count: number;
+  indexed_count: number;
   chunk_count: number;
+  created_at: string;
   updated_at: string;
+}
+
+export type DocStatus = 'queued' | 'parsing' | 'chunking' | 'embedding' | 'indexed' | 'failed';
+
+export interface Doc {
+  id: string;
+  kb_id: string;
+  filename: string;
+  type: string;
+  size_bytes: number;
+  size: string;
+  status: DocStatus;
+  progress: number;
+  error: string | null;
+  chunk_count: number;
+  created_at: string;
+}
+
+export interface UploadResult {
+  documents: Doc[];
+  rejected: { filename: string; reason: string }[];
+}
+
+export const isProcessing = (d: Doc) => d.status !== 'indexed' && d.status !== 'failed';
+
+/** Multipart upload (fetch sets the boundary; we only add the CSRF header). */
+export async function uploadFiles(kbId: string, files: File[]): Promise<UploadResult> {
+  const form = new FormData();
+  files.forEach((f) => form.append('files', f, f.name));
+  const res = await fetch(`/api/kbs/${kbId}/documents`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'X-Requested-With': 'fetch' },
+    body: form,
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, detailMessage(body, `Upload failed (${res.status})`));
+  return body as UploadResult;
 }
 
 export interface Connection {
@@ -106,6 +147,14 @@ export const endpoints = {
   revokeOtherSessions: () => api<void>('/me/sessions?others=true', { method: 'DELETE' }),
   deleteMe: () => api<void>('/me', { method: 'DELETE' }),
   kbs: () => api<Kb[]>('/kbs'),
+  createKb: (b: { name: string; description?: string; runtime: 'local' | 'cloud' }) =>
+    api<Kb>('/kbs', { method: 'POST', body: b }),
+  patchKb: (id: string, b: Partial<Pick<Kb, 'name' | 'description' | 'runtime'>>) =>
+    api<Kb>(`/kbs/${id}`, { method: 'PATCH', body: b }),
+  deleteKb: (id: string) => api<void>(`/kbs/${id}`, { method: 'DELETE' }),
+  documents: (kbId: string) => api<Doc[]>(`/kbs/${kbId}/documents`),
+  deleteDocument: (id: string) => api<void>(`/documents/${id}`, { method: 'DELETE' }),
+  retryDocument: (id: string) => api<Doc>(`/documents/${id}/retry`, { method: 'POST' }),
   connections: () => api<Connection[]>('/connections'),
   addConnection: (b: { api_base: string; api_key: string }) =>
     api<Connection>('/connections', { method: 'POST', body: b }),

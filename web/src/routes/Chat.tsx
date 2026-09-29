@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import type { Kb } from '../api/client';
@@ -6,7 +6,9 @@ import { Topbar } from '../components/AppShell';
 import { Dropdown, DropdownItem } from '../components/Dropdown';
 import { IconArrowUp, IconBook, IconLock, IconUpload } from '../components/icons';
 import { Pill, cx } from '../components/ui';
+import { DropZone } from '../components/DropZone';
 import { useConnections } from '../hooks/useConnections';
+import { ACCEPT, stageLabel, useDocuments, useUpload } from '../hooks/useDocuments';
 import { useKbs } from '../hooks/useKbs';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useMe } from '../hooks/useMe';
@@ -34,15 +36,28 @@ export default function Chat() {
   const [pick, setPick] = useState<{ conn: string; model: string } | null>(null);
   const [draft, setDraft] = useState('');
 
-  // "New chat" resets to the user's default knowledge base.
-  const fresh = (location.state as { fresh?: number } | null)?.fresh;
+  const [quickId, setQuickId] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  // "New chat" resets to the user's default KB, or to the KB we were sent here with.
+  const navState = location.state as { fresh?: number; kbId?: string } | null;
+  const fresh = navState?.fresh;
   useEffect(() => {
-    setKbId(null);
+    setKbId(navState?.kbId ?? null);
     setDraft('');
+    setQuickId(null);
   }, [fresh]);
 
   const kb = kbs?.find((k) => k.id === kbId) ?? kbs?.find((k) => k.id === me?.default_kb_id) ?? kbs?.[0];
   const kbName = kb?.name ?? 'your documents';
+
+  // Drop-to-index: upload into the selected KB and follow the first file's progress.
+  const upload = useUpload(kb?.id);
+  const { data: kbDocs } = useDocuments(quickId ? kb?.id : undefined);
+  const quick = quickId ? kbDocs?.find((d) => d.id === quickId) : undefined;
+  const startUpload = (files: File[]) =>
+    upload.mutate(files, { onSuccess: (res) => setQuickId(res.documents[0]?.id ?? null) });
+  const rejected = upload.data?.rejected ?? [];
 
   // Every chat model from every connection; default = first connection's current pick (Auto or fixed).
   const options = (conns ?? []).flatMap((c) =>
@@ -190,12 +205,24 @@ export default function Chat() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => kb && navigate(`/kbs/${kb.id}`)}
+                onClick={() => fileInput.current?.click()}
+                disabled={!kb || upload.isPending}
                 className="flex h-[30px] items-center gap-1.5 rounded-lg border border-border bg-transparent pl-2 pr-2.5 text-[12.5px] text-muted hover:bg-surface2 hover:text-text"
               >
                 <IconUpload size={14} />
                 Add file
               </button>
+              <input
+                ref={fileInput}
+                type="file"
+                accept={ACCEPT}
+                hidden
+                onChange={(e) => {
+                  const f = Array.from(e.target.files ?? []);
+                  if (f.length) startUpload(f.slice(0, 1));
+                  e.target.value = '';
+                }}
+              />
               <div className="flex-1" />
               <button
                 type="submit"
@@ -212,21 +239,74 @@ export default function Chat() {
             </div>
           </form>
 
-          <button
-            type="button"
-            onClick={() => kb && navigate(`/kbs/${kb.id}`)}
-            className="flex w-full items-center gap-3.5 rounded-[14px] border-[1.5px] border-dashed border-border-strong bg-transparent p-[18px] text-left text-text hover:border-accent hover:bg-accent-soft"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-accent-soft text-accent-text">
-              <IconUpload size={18} />
-            </div>
-            <div className="flex min-w-0 flex-col gap-[3px]">
-              <div className="text-[14px] font-semibold">Drop a document to start</div>
-              <div className="text-[13px] text-muted">
-                PDF, DOCX, MD, TXT, CSV or XLSX. Indexed into {kbName} in seconds.
+          {quick ? (
+            <div className="flex items-center gap-3.5 rounded-[14px] border border-border bg-surface px-4 py-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-surface2 font-mono text-[10.5px] font-semibold text-muted">
+                {quick.type}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+                <div className="flex justify-between gap-2.5">
+                  <span className="truncate font-mono text-[13.5px] font-medium">{quick.filename}</span>
+                  <span
+                    className={cx(
+                      'whitespace-nowrap text-[12.5px]',
+                      quick.status === 'indexed' ? 'text-ok-text' : quick.status === 'failed' ? 'text-err-text' : 'text-muted',
+                    )}
+                  >
+                    {quick.status === 'indexed' ? 'Ready' : quick.status === 'failed' ? 'Failed' : `${quick.progress}%`}
+                  </span>
+                </div>
+                <div className="h-1 overflow-hidden rounded-full bg-surface2">
+                  <div
+                    className={cx(
+                      'h-full rounded-full transition-[width] duration-300',
+                      quick.status === 'indexed' ? 'bg-ok' : quick.status === 'failed' ? 'bg-err-text' : 'bg-accent',
+                    )}
+                    style={{ width: `${quick.status === 'failed' ? 100 : quick.progress}%` }}
+                  />
+                </div>
+                <div
+                  className={cx(
+                    'flex flex-wrap gap-x-2 text-[12.5px]',
+                    quick.status === 'failed' ? 'text-err-text' : 'text-muted',
+                  )}
+                >
+                  <span>{stageLabel(quick, kb?.runtime !== 'cloud')}</span>
+                  {(quick.status === 'indexed' || quick.status === 'failed') && (
+                    <button
+                      type="button"
+                      onClick={() => setQuickId(null)}
+                      className="border-none bg-transparent p-0 text-[12.5px] font-medium text-accent-text"
+                    >
+                      Add another
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </button>
+          ) : (
+            <DropZone
+              onFiles={(files) => startUpload(files.slice(0, 1))}
+              multiple={false}
+              disabled={!kb || upload.isPending}
+              className="flex items-center gap-3.5 rounded-[14px] bg-transparent p-[18px] text-left"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-accent-soft text-accent-text">
+                <IconUpload size={18} />
+              </div>
+              <div className="flex min-w-0 flex-col gap-[3px]">
+                <div className="text-[14px] font-semibold">{upload.isPending ? 'Uploading…' : 'Drop a document to start'}</div>
+                <div className="text-[13px] text-muted">
+                  PDF, DOCX, MD, TXT, CSV or XLSX. Indexed into {kbName} in seconds.
+                </div>
+              </div>
+            </DropZone>
+          )}
+          {(upload.error || rejected.length > 0) && (
+            <div className="rounded-xl bg-err-soft px-4 py-3 text-[13px] text-err-text" role="alert">
+              {upload.error?.message ?? rejected.map((r) => `${r.filename}: ${r.reason}`).join(' ')}
+            </div>
+          )}
         </div>
       </div>
     </>

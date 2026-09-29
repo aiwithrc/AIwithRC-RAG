@@ -23,7 +23,16 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY api/ ./
 COPY --from=web /web/dist /app/web/dist
 
-RUN useradd --uid 1000 --create-home app && mkdir -p /data && chown app:app /data
+# Bake the default embedding model and tokenizer into the image: the first upload doesn't wait
+# for a download, and a VPS without internet access can still index.
+ENV MODEL_CACHE_DIR=/app/models \
+    TIKTOKEN_CACHE_DIR=/app/models/tiktoken \
+    HF_HUB_DISABLE_TELEMETRY=1
+RUN /app/.venv/bin/python -c "\
+from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5', cache_dir='/app/models'); \
+import tiktoken; tiktoken.get_encoding('cl100k_base')"
+
+RUN useradd --uid 1000 --create-home app && mkdir -p /data && chown app:app /data && chown -R app:app /app/models
 USER app
 
 ENV PATH=/app/.venv/bin:$PATH \

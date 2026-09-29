@@ -11,7 +11,9 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.db import init_engine
 from app.migrate import upgrade_to_head
-from app.routers import auth, connections, kbs, me
+from app.jobs import ingest  # noqa: F401  (registers the ingest job handler)
+from app.jobs.worker import worker
+from app.routers import auth, connections, documents, kbs, me
 
 log = logging.getLogger("aiwithrc")
 
@@ -29,7 +31,13 @@ def create_app(*, run_migrations: bool = True) -> FastAPI:
             upgrade_to_head(settings.db_url)
         if settings.app_secret == "change-me-in-production":
             log.warning("APP_SECRET is the default value. Set it in .env before exposing this server.")
-        yield
+        if settings.start_worker:
+            worker.start()
+        try:
+            yield
+        finally:
+            if settings.start_worker:
+                await worker.stop()
 
     app = FastAPI(title="AIwithRC-RAG", version="0.1.0", lifespan=lifespan, docs_url="/api/docs",
                   openapi_url="/api/openapi.json", redoc_url=None)
@@ -52,6 +60,7 @@ def create_app(*, run_migrations: bool = True) -> FastAPI:
     api.include_router(auth.router)
     api.include_router(me.router)
     api.include_router(kbs.router)
+    api.include_router(documents.router)
     api.include_router(connections.router)
     app.include_router(api)
 

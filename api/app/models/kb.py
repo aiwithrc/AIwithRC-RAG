@@ -54,3 +54,6 @@ class Chunk(Base):
     page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     section: Mapped[str | None] = mapped_column(String(512), nullable=True)
     token_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Stable integer key into the chunks_fts FTS5 table (SQLite rowids of a table with a string
+    # primary key can change on VACUUM, so we keep our own).
+    fts_rowid: Mapped[int] = mapped_column(Integer, unique=True, index=True)
