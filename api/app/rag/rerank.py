@@ -33,6 +33,19 @@ def sigmoid(x: float) -> float:
     return 1.0 / (1.0 + math.exp(-max(-60.0, min(60.0, x))))
 
 
+# Calibration for ms-marco-MiniLM-L-6-v2, measured on real documents (contracts, a résumé):
+# unrelated question/passage pairs score about -11; passages that answer the question score
+# -0.2 to +6.6 even when worded differently ("study" vs "Education"). A plain sigmoid put a
+# correct answer at 0.44 ("low confidence"). Centre at -5 and soften: -11 -> 0.08, -5 -> 0.50,
+# -0.2 -> 0.87, +3 -> 0.96. Thresholds stay as specified: skip the LLM below 0.35, high >= 0.75.
+CENTER, SCALE = -5.0, 2.5
+
+
+def relevance(logit: float) -> float:
+    """Cross-encoder logit -> 0-1 relevance shown in the UI and used for confidence."""
+    return sigmoid((logit - CENTER) / SCALE)
+
+
 _reranker: Reranker | None = None
 _lock = threading.Lock()
 

@@ -33,6 +33,8 @@ class Message(Base):
     confidence: Mapped[str | None] = mapped_column(String(8), nullable=True)  # high | low
     citations_json: Mapped[str] = mapped_column(Text, default="[]")
     followups_json: Mapped[str] = mapped_column(Text, default="[]")
+    # Addition to the spec: why an answer failed (model unreachable, …), so the thread can show it.
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = created_at_column()
 
 

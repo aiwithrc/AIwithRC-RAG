@@ -3,9 +3,9 @@
 Upload documents, ask questions, and get answers that cite the exact passage they came from.
 Self-hosted, MIT licensed, runs on a laptop or a small VPS (2–4 GB RAM, no GPU).
 
-> **Status: phase 2 of 6 (ingest).** Sign-in, profile, model provider connections, knowledge bases and
-> document upload with live indexing work. Answering, sharing and the activity log arrive in the next phases
-> (see [Roadmap](#roadmap)).
+> **Status: phase 3 of 6 (ask).** Sign-in, profile, model providers, knowledge bases, document upload and
+> indexing, and streaming answers with citations and a source panel work. Sharing, suggested questions on the
+> empty chat and the activity log arrive in the next phases (see [Roadmap](#roadmap)).
 
 ## Quick start (Docker)
 
@@ -82,6 +82,32 @@ with the embedding model, so indexing works without internet access.
 Scanned PDFs have no text layer and fail with "No text layer found. Turn on OCR in Settings." OCR is optional:
 install [OCRmyPDF](https://ocrmypdf.readthedocs.io/) with Tesseract on the server and turn on OCR in Settings.
 
+## How answers work
+
+1. **Follow-ups are made standalone.** "What did he study?" becomes "What did Rishab study?" using the last few
+   messages (only when the question points back at the conversation, to save a model call).
+2. **Retrieval.** Top 20 by vector similarity plus top 20 by keyword (BM25) are merged with Reciprocal Rank
+   Fusion, re-scored by a cross-encoder, and the best 5 (Settings → top-k) are kept. Each passage gets a 0–1
+   relevance score.
+3. **Nothing relevant (below 0.35)?** The model isn't called; you get "I couldn't find a passage…" with the
+   closest match as source [1].
+4. **Answer.** The model sees only the numbered passages, must cite `[n]` after each claim and bold the key fact.
+   The answer streams in; `[n]` markers are then checked, renumbered 1..m and linked to the exact sentence in
+   each passage (click a number to open the source panel).
+5. **Confidence** is high when the best passage scores ≥ 0.75 and the answer cites something; otherwise low.
+6. **Follow-up suggestions** arrive just after the answer.
+
+Local reasoning models (e.g. Qwen3.5 in LM Studio) are asked not to "think" first (`reasoning_effort: none`),
+which cuts answers from ~30 s to a few seconds on a laptop.
+
+## Index quality checks
+
+```bash
+docker compose exec app python -m app.cli check     # every document: chunks, vectors and keyword rows agree,
+                                                    # chunk sizes, vector sanity, self-retrieval
+docker compose exec app python -m app.cli reindex   # re-parse and re-embed everything (after upgrades), then check
+```
+
 ## Configuration
 
 All settings are environment variables; see [`.env.example`](.env.example) for the full list.
@@ -116,7 +142,7 @@ design/  Clickable prototype, the source of truth for the UI (open AIwithRC-RAG.
 
 1. **Skeleton** ✅ auth, sessions, app shell, light/dark theme, Docker
 2. **Ingest** ✅ knowledge bases, uploads, parsing, chunking, local embeddings, live indexing status
-3. **Ask:** provider connections, hybrid retrieval + rerank, streaming cited answers, source panel
+3. **Ask** ✅ provider connections, hybrid retrieval + rerank, streaming cited answers, source panel
 4. **Hook:** drop-to-answer first run, suggested questions, shareable public answers
 5. **History, Settings, Profile:** activity log, CSV export, workspace settings, re-index
 6. **Harden and ship:** tests, mobile pass, VPS guide, screenshots

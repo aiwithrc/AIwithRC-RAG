@@ -132,6 +132,125 @@ export interface Connection {
   created_at: string;
 }
 
+export interface Citation {
+  n: number;
+  chunk_id: string;
+  document_id: string;
+  filename: string;
+  page: number | null;
+  section: string | null;
+  location: string;
+  score: number;
+  chunk: number;
+  total: number;
+  before: string;
+  hit: string;
+  after: string;
+}
+
+export interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  model: string | null;
+  connection_id: string | null;
+  connection_name: string | null;
+  runtime: 'local' | 'cloud' | null;
+  confidence: 'high' | 'low' | null;
+  citations: Citation[];
+  followups: string[];
+  error: string | null;
+  created_at: string;
+  /** Client-only: set while the answer is streaming. */
+  stage?: 'searching' | 'thinking' | 'answering';
+}
+
+export interface ChatSummary {
+  id: string;
+  title: string;
+  kb_id: string | null;
+  kb_name: string | null;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatDetail {
+  chat: ChatSummary;
+  messages: Message[];
+}
+
+export interface StreamHandlers {
+  onStart?: (user: Message) => void;
+  onStatus?: (stage: 'searching' | 'thinking' | 'answering') => void;
+  onToken?: (text: string) => void;
+  onDone?: (message: Message) => void;
+  onFollowups?: (messageId: string, followups: string[]) => void;
+  onError?: (detail: string, message?: Message) => void;
+}
+
+/** POST that answers with Server-Sent Events (EventSource can't POST, so parse the stream by hand). */
+export async function streamSSE(path: string, body: Json, h: StreamHandlers, signal?: AbortSignal): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'fetch', 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch {
+    h.onError?.("Can't reach the server. Check your connection and try again.");
+    return;
+  }
+  if (!res.ok || !res.body) {
+    const b = await res.json().catch(() => null);
+    h.onError?.(detailMessage(b, `Request failed (${res.status})`));
+    return;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let finished = false;
+  const dispatch = (block: string) => {
+    let event = 'message';
+    let data = '';
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) data += line.slice(5).trim();
+    }
+    if (!data) return;
+    const d = JSON.parse(data);
+    if (event === 'start') h.onStart?.(d.user);
+    else if (event === 'status') h.onStatus?.(d.stage);
+    else if (event === 'token') h.onToken?.(d.t);
+    else if (event === 'done') {
+      finished = true;
+      h.onDone?.(d.message);
+    } else if (event === 'followups') h.onFollowups?.(d.message_id, d.followups); else if (event === 'error') {
+      finished = true;
+      h.onError?.(d.detail, d.message);
+    }
+  };
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        dispatch(buf.slice(0, i));
+        buf = buf.slice(i + 2);
+      }
+    }
+    if (buf.trim()) dispatch(buf);
+  } catch {
+    if (signal?.aborted) return;
+  }
+  if (!finished && !signal?.aborted) h.onError?.('The connection closed before the answer finished.');
+}
+
 // ---- Endpoints ----
 
 export const endpoints = {
@@ -155,6 +274,10 @@ export const endpoints = {
   documents: (kbId: string) => api<Doc[]>(`/kbs/${kbId}/documents`),
   deleteDocument: (id: string) => api<void>(`/documents/${id}`, { method: 'DELETE' }),
   retryDocument: (id: string) => api<Doc>(`/documents/${id}/retry`, { method: 'POST' }),
+  chats: () => api<ChatSummary[]>('/chats'),
+  createChat: (kb_id: string) => api<ChatSummary>('/chats', { method: 'POST', body: { kb_id } }),
+  chat: (id: string) => api<ChatDetail>(`/chats/${id}`),
+  deleteChat: (id: string) => api<void>(`/chats/${id}`, { method: 'DELETE' }),
   connections: () => api<Connection[]>('/connections'),
   addConnection: (b: { api_base: string; api_key: string }) =>
     api<Connection>('/connections', { method: 'POST', body: b }),

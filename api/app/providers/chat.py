@@ -26,6 +26,14 @@ class ChatTarget:
     api_key: str
     kind: str  # openai_compat | anthropic
     model: str
+    local: bool = False  # LM Studio / Ollama / vLLM on this machine or network
+
+
+class _Thinking(str):
+    """Yielded once by `stream_chat` when the model starts reasoning on a separate channel."""
+
+
+THINKING = _Thinking("")
 
 
 def _client() -> httpx.AsyncClient:
@@ -82,7 +90,9 @@ def _error_from(r_text: str, status: int) -> str:
     return f"The model server answered with an error ({status}): {msg}" if msg else f"The model server answered {status}."
 
 
-def _prepare(target: ChatTarget, system: str, messages: list[dict], max_tokens: int, stream: bool) -> tuple[str, dict, dict]:
+def _prepare(
+    target: ChatTarget, system: str, messages: list[dict], max_tokens: int, stream: bool, no_reasoning: bool = True
+) -> tuple[str, dict, dict]:
     if _wants_no_think(target.model):
         system = system + "\n/no_think"
     if target.kind == "anthropic":
@@ -101,6 +111,11 @@ def _prepare(target: ChatTarget, system: str, messages: list[dict], max_tokens: 
             "temperature": 0.2,
             "stream": stream,
         }
+        if target.local and no_reasoning:
+            # Local reasoning models (e.g. Qwen3.5 in LM Studio) otherwise spend hundreds of tokens thinking
+            # before answering. Answering from given passages doesn't need it. OpenAI's API rejects "none"
+            # for non-reasoning models, so this is only sent to local servers (and retried without on 400).
+            body["reasoning_effort"] = "none"
     return url, headers, body
 
 
@@ -111,38 +126,29 @@ def _connect_error(target: ChatTarget) -> ProviderError:
 
 
 async def stream_chat(target: ChatTarget, system: str, messages: list[dict], max_tokens: int = 1024) -> AsyncIterator[str]:
-    """Yield answer text as it arrives (thinking removed)."""
-    url, headers, body = _prepare(target, system, messages, max_tokens, stream=True)
+    """Yield answer text as it arrives (thinking removed). Yields THINKING once if the model reasons first."""
     think = ThinkFilter()
+    reasoning_seen = False
     try:
-        async with _client() as c, c.stream("POST", url, headers=headers, json=body) as r:
-            if r.status_code >= 400:
-                raise ProviderError(_error_from((await r.aread()).decode(errors="replace"), r.status_code))
-            async for line in r.aiter_lines():
-                if not line.startswith("data:"):
-                    continue
-                data = line[5:].strip()
-                if not data or data == "[DONE]":
-                    continue
-                try:
-                    evt = json.loads(data)
-                except ValueError:
-                    continue
-                if target.kind == "anthropic":
-                    if evt.get("type") == "error":
-                        raise ProviderError(evt.get("error", {}).get("message", "The model returned an error."))
-                    piece = evt.get("delta", {}).get("text", "") if evt.get("type") == "content_block_delta" else ""
-                else:
-                    if "error" in evt:
-                        err = evt["error"]
-                        raise ProviderError(err.get("message", str(err)) if isinstance(err, dict) else str(err))
-                    choices = evt.get("choices") or [{}]
-                    # reasoning_content / reasoning (separate reasoning channel) is ignored on purpose.
-                    piece = (choices[0].get("delta") or {}).get("content") or ""
-                if piece and (out := think.feed(piece)):
-                    yield out
-            if tail := think.flush():
-                yield tail
+        async with _client() as c:
+            for attempt in (0, 1):
+                url, headers, body = _prepare(target, system, messages, max_tokens, stream=True, no_reasoning=attempt == 0)
+                async with c.stream("POST", url, headers=headers, json=body) as r:
+                    if r.status_code >= 400:
+                        text = (await r.aread()).decode(errors="replace")
+                        if attempt == 0 and "reasoning_effort" in body and r.status_code in (400, 422):
+                            continue  # server doesn't know reasoning_effort: retry without it
+                        raise ProviderError(_error_from(text, r.status_code))
+                    async for piece in _read_stream(r, target, think):
+                        if piece is THINKING:
+                            if not reasoning_seen:
+                                reasoning_seen = True
+                                yield THINKING
+                            continue
+                        yield piece
+                    if tail := think.flush():
+                        yield tail
+                    return
     except httpx.ConnectError as e:
         raise _connect_error(target) from e
     except httpx.TimeoutException as e:
@@ -151,6 +157,39 @@ async def stream_chat(target: ChatTarget, system: str, messages: list[dict], max
         raise ProviderError(f"Lost the connection to the model server ({e.__class__.__name__}).") from e
 
 
+async def _read_stream(r: httpx.Response, target: ChatTarget, think: ThinkFilter) -> AsyncIterator[str]:
+    """Parse one SSE response into answer text; yields THINKING for reasoning-channel chunks."""
+    async for line in r.aiter_lines():
+        if not line.startswith("data:"):
+            continue
+        data = line[5:].strip()
+        if not data or data == "[DONE]":
+            continue
+        try:
+            evt = json.loads(data)
+        except ValueError:
+            continue
+        if target.kind == "anthropic":
+            if evt.get("type") == "error":
+                raise ProviderError(evt.get("error", {}).get("message", "The model returned an error."))
+            delta = evt.get("delta", {}) if evt.get("type") == "content_block_delta" else {}
+            if delta.get("type") == "thinking_delta":
+                yield THINKING
+                continue
+            piece = delta.get("text", "")
+        else:
+            if "error" in evt:
+                err = evt["error"]
+                raise ProviderError(err.get("message", str(err)) if isinstance(err, dict) else str(err))
+            delta = (evt.get("choices") or [{}])[0].get("delta") or {}
+            if delta.get("reasoning_content") or delta.get("reasoning"):
+                yield THINKING  # separate reasoning channel (LM Studio, vLLM, DeepSeek): never shown
+            piece = delta.get("content") or ""
+        if piece and (out := think.feed(piece)):
+            yield out
+
+
 async def complete(target: ChatTarget, system: str, messages: list[dict], max_tokens: int = 200) -> str:
     """One-shot completion (thinking removed)."""
-    return "".join([piece async for piece in stream_chat(target, system, messages, max_tokens)]).strip()
+    parts = [p async for p in stream_chat(target, system, messages, max_tokens) if p is not THINKING]
+    return "".join(parts).strip()

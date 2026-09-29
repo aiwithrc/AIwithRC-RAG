@@ -100,7 +100,8 @@ def _claims_for(text: str, n: int) -> str:
 
 def highlight(chunk_text: str, claim: str) -> tuple[str, str, str]:
     """Split the chunk into (before, hit, after) where hit is the sentence(s) overlapping most with the claim."""
-    sentences = split_sentences(re.sub(r"\s*\n\s*", " ", chunk_text))
+    # Line breaks are boundaries too, so a heading line without a full stop isn't glued to the next sentence.
+    sentences = [s for line in chunk_text.split("\n") for s in split_sentences(line.strip()) if s]
     if not sentences:
         return "", chunk_text, ""
     claim_terms = _terms(_MARKER.sub("", claim))

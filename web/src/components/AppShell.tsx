@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import type { Me } from '../api/client';
+import { useChats } from '../hooks/useChat';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useMe, useSignOut } from '../hooks/useMe';
 import { useTheme } from '../hooks/useTheme';
@@ -27,6 +28,31 @@ const NAV = [
   { to: '/keys', label: 'API keys', icon: IconKey, end: false },
   { to: '/settings', label: 'Settings', icon: IconSliders, end: false },
 ];
+
+function RecentChats({ onNavigate }: { onNavigate: () => void }) {
+  const { data: chats } = useChats();
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-px overflow-auto px-3">
+      {chats && chats.length === 0 && <div className="px-2.5 py-[7px] text-[13px] text-muted">No chats yet</div>}
+      {chats?.slice(0, 12).map((c) => (
+        <NavLink
+          key={c.id}
+          to={`/c/${c.id}`}
+          onClick={onNavigate}
+          title={c.title}
+          className={({ isActive }) =>
+            cx(
+              'block truncate rounded-lg px-2.5 py-[7px] text-[13.5px] text-text no-underline hover:bg-surface2 hover:no-underline',
+              isActive && 'bg-surface2',
+            )
+          }
+        >
+          {c.title}
+        </NavLink>
+      ))}
+    </div>
+  );
+}
 
 function Sidebar({ me, onNavigate }: { me: Me; onNavigate: () => void }) {
   const navigate = useNavigate();
@@ -66,9 +92,7 @@ function Sidebar({ me, onNavigate }: { me: Me; onNavigate: () => void }) {
         ))}
       </nav>
       <div className="px-[22px] pb-1.5 pt-5 text-[12px] font-medium text-muted">Recent</div>
-      <div className="flex min-h-0 flex-1 flex-col gap-px overflow-auto px-3">
-        <div className="px-2.5 py-[7px] text-[13px] text-muted">No chats yet</div>
-      </div>
+      <RecentChats onNavigate={onNavigate} />
       <div className="flex flex-col gap-1 border-t border-border p-3">
         <button
           type="button"

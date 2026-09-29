@@ -48,6 +48,7 @@ export default function App() {
       <Route path="/s/:token" element={<SharePublic />} />
       <Route element={<RequireAuth />}>
         <Route index element={<Chat />} />
+        <Route path="c/:chatId" element={<Chat />} />
         <Route path="kbs" element={<KnowledgeBases />} />
         <Route path="kbs/:id" element={<KbDetail />} />
         <Route path="history" element={<History />} />

@@ -1,7 +1,7 @@
 """Retrieval: vector top 20 (+ FTS5 BM25 top 20 when hybrid) → Reciprocal Rank Fusion → optional
 cross-encoder rerank → keep top_k. Every passage carries a 0–1 relevance score for the UI.
 
-Relevance: sigmoid of the cross-encoder score when reranking; otherwise cosine similarity between
+Relevance: calibrated cross-encoder score (see rerank.relevance) when reranking; otherwise cosine similarity between
 the question and the passage embeddings.
 """
 
@@ -15,7 +15,7 @@ from app.models import Chunk, Document
 from app.rag import store
 from app.rag.chunk import with_context
 from app.rag.embed import get_embedder
-from app.rag.rerank import get_reranker, sigmoid
+from app.rag.rerank import get_reranker, relevance
 
 CANDIDATES = 20
 RRF_K = 60
@@ -103,7 +103,7 @@ def retrieve(
         raw = get_reranker().scores(
             question, [with_context(by_id[c][1], by_id[c][0].section, by_id[c][0].text) for c in fused]
         )
-        rel = {cid: sigmoid(s) for cid, s in zip(fused, raw, strict=True)}
+        rel = {cid: relevance(s) for cid, s in zip(fused, raw, strict=True)}
     else:
         got = col.get(ids=fused, include=["embeddings"])
         embs = dict(zip(got["ids"], got["embeddings"], strict=False))

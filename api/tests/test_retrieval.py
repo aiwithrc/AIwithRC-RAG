@@ -16,8 +16,11 @@ class KeywordReranker:
     """Fake cross-encoder: score = shared words between query and text (logit-ish scale)."""
 
     def scores(self, query, texts):
-        q = {w for w in query.lower().split() if len(w) > 3}
-        return [float(sum(w in t.lower() for w in q)) * 3 - 4 for t in texts]
+        import re
+
+        q = {w for w in re.findall(r"\w+", query.lower()) if len(w) > 3}
+        # Mimics ms-marco-MiniLM: about -11 for unrelated text, higher per shared word.
+        return [-11.0 + 5.0 * sum(w in t.lower() for w in q) for t in texts]
 
 
 @pytest.fixture(autouse=True)
@@ -174,3 +177,15 @@ def test_check_reports_healthy_and_broken_documents(client, owner):
         store.collection(kb).delete(ids=[victim.id])
         broken = {r.filename: r for r in check_all(db)}["long.pdf"]
         assert any("missing a vector" in p for p in broken.problems)
+
+
+def test_relevance_calibration_matches_measurements():
+    from app.rag.cite import HIGH_CONFIDENCE, MIN_RELEVANCE
+    from app.rag.rerank import relevance
+
+    # Measured ms-marco-MiniLM logits: unrelated pairs ~ -11, answering passages -0.2 .. +6.6.
+    for unrelated in (-11.4, -10.8):
+        assert relevance(unrelated) < MIN_RELEVANCE
+    for answering in (-0.22, 0.17, 1.73, 3.10, 6.63):
+        assert relevance(answering) >= HIGH_CONFIDENCE
+    assert relevance(-5.0) == pytest.approx(0.5)

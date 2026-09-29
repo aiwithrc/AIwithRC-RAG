@@ -13,7 +13,7 @@ from app.db import init_engine
 from app.migrate import upgrade_to_head
 from app.jobs import ingest  # noqa: F401  (registers the ingest job handler)
 from app.jobs.worker import worker
-from app.routers import auth, connections, documents, kbs, me
+from app.routers import auth, chats, connections, documents, kbs, me
 
 log = logging.getLogger("aiwithrc")
 
@@ -62,6 +62,7 @@ def create_app(*, run_migrations: bool = True) -> FastAPI:
     api.include_router(kbs.router)
     api.include_router(documents.router)
     api.include_router(connections.router)
+    api.include_router(chats.router)
     app.include_router(api)
 
     @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)
