@@ -5,8 +5,9 @@ Self-hosted, MIT licensed, runs on a laptop or a small VPS (2–4 GB RAM, no GPU
 
 > **Status: phases 1–5 of 6 done, in testing.** Sign-in, profile, model providers, knowledge bases, document
 > upload and indexing, streaming answers with citations and a source panel, suggested questions, shared
-> answers, History (with CSV export), Settings and a workspace Prompt all work. Phase 6 (hardening, VPS guide)
-> is next (see [Roadmap](#roadmap)).
+> answers, History (with CSV export), Settings and a workspace Prompt all work. Phase 6 is in progress: answer
+> quality (context budget, whole-document summaries, conversation memory, structured answers) is done; the VPS
+> guide and screenshots are next (see [Roadmap](#roadmap)).
 
 ## Quick start (Docker)
 
@@ -87,16 +88,31 @@ install [OCRmyPDF](https://ocrmypdf.readthedocs.io/) with Tesseract on the serve
 
 1. **Follow-ups are made standalone.** "What did he study?" becomes "What did Rishab study?" using the last few
    messages (only when the question points back at the conversation, to save a model call).
-2. **Retrieval.** Top 20 by vector similarity plus top 20 by keyword (BM25) are merged with Reciprocal Rank
-   Fusion, re-scored by a cross-encoder, and the best 5 (Settings → top-k) are kept. Each passage gets a 0–1
-   relevance score.
-3. **Nothing relevant (below 0.35)?** The model isn't called; you get "I couldn't find a passage…" with the
+2. **Retrieval.** Top 40 by vector similarity plus top 40 by keyword (BM25) are merged with Reciprocal Rank
+   Fusion and re-scored by a cross-encoder. The best passages are kept while they fit the **context budget**
+   (Settings → Context per answer, default 8,000 tokens; at most Settings → Passages per answer, default 8), and
+   weak matches are dropped. The three strongest passages are then widened with the chunk before and after them,
+   so an answer isn't cut off at a chunk boundary. Each passage gets a 0–1 relevance score.
+3. **Summaries and overviews** ("summarise this", "key points", "what is this report about") read the whole
+   document instead: chunks spread evenly from start to end, in reading order, filling the budget.
+4. **Nothing relevant (below 0.35)?** The model isn't called; you get "I couldn't find a passage…" with the
    closest match as source [1].
-4. **Answer.** The model sees only the numbered passages, must cite `[n]` after each claim and bold the key fact.
+5. **Answer.** The model sees the numbered passages plus the last three questions and answers of the chat. Fixed
+   grounding rules make it use only the passages and cite `[n]` after each claim; a default answer style asks for
+   the direct answer first, then a complete, structured answer (lists, tables, headings) sized to the question.
+   Your **Prompt** screen overrides that style (length, tone, format); it can't switch off grounding or citations.
    The answer streams in; `[n]` markers are then checked, renumbered 1..m and linked to the exact sentence in
    each passage (click a number to open the source panel).
-5. **Confidence** is high when the best passage scores ≥ 0.75 and the answer cites something; otherwise low.
-6. **Follow-up suggestions** arrive just after the answer.
+6. **Confidence** is high when the answer cites something and either the best passage scores ≥ 0.75, or the
+   cited best passage scores ≥ 0.55 and beats the next one by ≥ 0.2 (a clear winner); otherwise low.
+7. **Follow-up suggestions** arrive just after the answer.
+
+**How much text can a question use?** Documents can be any length and you can upload as many as you like; only
+what each question needs is sent to the model. The budget is capped automatically to the model's context window:
+LM Studio reports the context length a model is loaded with, and the app keeps 3,000 tokens free for the prompt,
+the conversation and the answer. **In LM Studio, load the model with Context Length 16384 or more** (the default
+4096 leaves room for only ~1,200 tokens of documents). Cloud models (Claude, GPT-4.1) have large windows, so you
+can raise Context per answer to 32,000+ tokens for long reports.
 
 Local reasoning models (e.g. Qwen3.5 in LM Studio) are asked not to "think" first (`reasoning_effort: none`),
 which cuts answers from ~30 s to a few seconds on a laptop.

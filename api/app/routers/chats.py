@@ -37,7 +37,7 @@ from app.services import events
 router = APIRouter(tags=["chats"])
 log = logging.getLogger("aiwithrc.chat")
 
-HISTORY_MESSAGES = 4
+HISTORY_MESSAGES = 6
 
 
 # ---- serialisation ----
@@ -156,7 +156,7 @@ def _settings(db: Db, workspace_id: str) -> answer.Settings:
         return answer.Settings()
     return answer.Settings(
         top_k=ws.top_k, hybrid=ws.hybrid, rerank=ws.rerank, embedding_model=ws.embedding_model,
-        instructions=ws.custom_instructions or "",
+        instructions=ws.custom_instructions or "", context_tokens=ws.context_tokens,
     )
 
 

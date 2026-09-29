@@ -147,6 +147,21 @@ def test_nothing_relevant_skips_the_model(client, setup, model):
     assert model.requests == []  # no LLM call
 
 
+def test_overview_reads_whole_document_and_sees_history(client, setup, model):
+    ask(client, setup["chat"]["id"], "How much notice to terminate the Acme agreement?")
+    model.requests.clear()
+    # Scores low against every chunk, but a summary needs the whole document, not a "not found".
+    msg = next(d for e, d in ask(client, setup["chat"]["id"], "Give me an overview of the Acme agreement") if e == "done")["message"]
+    assert msg["content"] != answer.NOT_FOUND
+    req = next(r for r in model.requests if "Question:" in r["messages"][-1]["content"])
+    last = req["messages"][-1]["content"]
+    assert "spread across the whole document" in last and "Payment" in last and "Termination" in last
+    # The earlier turn is in the conversation, without its old [n] markers.
+    roles = [m["role"] for m in req["messages"] if m["role"] != "system"]
+    assert roles[-3:] == ["user", "assistant", "user"]
+    assert all("[1]" not in m["content"] for m in req["messages"][:-1] if m["role"] == "assistant")
+
+
 def test_empty_kb_message(client, owner, model):
     kb = client.post("/api/kbs", json={"name": "Empty"}).json()
     client.post("/api/connections", json={"api_base": LOCAL})
@@ -218,17 +233,17 @@ def test_prompt_instructions_are_saved_and_used_without_restart(client, setup, m
     ask(client, setup["chat"]["id"], "How much notice to terminate?")
     system = next(r for r in model.requests if "Question:" in r["messages"][-1]["content"])["messages"][0]["content"]
     assert system.startswith(answer.SYSTEM)
-    assert "Additional instructions from this workspace" in system and "Answer as a numbered list." in system
+    assert "Workspace instructions (these take priority" in system and "Answer as a numbered list." in system
 
     client.patch("/api/settings", json={"custom_instructions": ""})
     model.requests.clear()
     ask(client, setup["chat"]["id"], "How much notice to terminate?")
     system = next(r for r in model.requests if "Question:" in r["messages"][-1]["content"])["messages"][0]["content"]
-    assert "Additional instructions" not in system
+    assert "Workspace instructions" not in system
 
     titles = [e.title for e in SessionLocal().scalars(select(Event).where(Event.category == "settings"))]
     assert titles == ["Prompt instructions updated", "Prompt instructions cleared"]
-    assert client.patch("/api/settings", json={"custom_instructions": "x" * 4001}).status_code == 422
+    assert client.patch("/api/settings", json={"custom_instructions": "x" * (answer.MAX_INSTRUCTIONS + 1)}).status_code == 422
 
 
 def test_only_owner_edits_prompt(app, client, owner, monkeypatch):

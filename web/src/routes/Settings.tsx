@@ -166,9 +166,16 @@ export default function Settings() {
                     </Button>
                   </div>
                 )}
-                <Row title="Passages per answer" sub="How many chunks are retrieved (top-k).">
-                  <Stepper label="passages per answer" value={s.top_k} step={1} min={1} max={20} disabled={!canEdit || patch.isPending}
+                <Row title="Passages per answer" sub="Most chunks the model reads for one question (top-k). Weak matches are left out.">
+                  <Stepper label="passages per answer" value={s.top_k} step={1} min={1} max={40} disabled={!canEdit || patch.isPending}
                     onChange={(v) => patch.mutate({ top_k: v })} />
+                </Row>
+                <Row
+                  title="Context per answer"
+                  sub="Most document tokens sent with one question, including the text around the best matches and whole-document coverage for summaries. Automatically lowered to fit the model's context window (LM Studio: set Context Length when loading the model)."
+                >
+                  <Stepper label="context per answer" value={s.context_tokens} step={2000} min={2000} max={64000} disabled={!canEdit || patch.isPending}
+                    onChange={(v) => patch.mutate({ context_tokens: v })} />
                 </Row>
                 <Row title="Hybrid search" sub="Combine keyword (BM25) and vector search.">
                   <Toggle on={s.hybrid} onChange={toggle('hybrid')} label="Hybrid search" />

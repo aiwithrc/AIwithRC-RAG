@@ -10,7 +10,9 @@ class WorkspaceSettings(Base):
     workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), primary_key=True)
     chunk_size: Mapped[int] = mapped_column(Integer, default=800)
     chunk_overlap: Mapped[int] = mapped_column(Integer, default=120)
-    top_k: Mapped[int] = mapped_column(Integer, default=5)
+    top_k: Mapped[int] = mapped_column(Integer, default=8)
+    # Most passage tokens sent with one question (capped further by the model's context window when known).
+    context_tokens: Mapped[int] = mapped_column(Integer, default=8000, server_default="8000")
     hybrid: Mapped[bool] = mapped_column(Boolean, default=True)
     rerank: Mapped[bool] = mapped_column(Boolean, default=True)
     keep_local: Mapped[bool] = mapped_column(Boolean, default=True)

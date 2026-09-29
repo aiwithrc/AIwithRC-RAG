@@ -5,6 +5,7 @@ hides it from the stream so only the answer reaches the user.
 """
 
 import json
+import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
@@ -138,7 +139,8 @@ async def stream_chat(target: ChatTarget, system: str, messages: list[dict], max
                         text = (await r.aread()).decode(errors="replace")
                         if attempt == 0 and "reasoning_effort" in body and r.status_code in (400, 422):
                             continue  # server doesn't know reasoning_effort: retry without it
-                        raise ProviderError(_error_from(text, r.status_code))
+                        msg = _error_from(text, r.status_code)
+                        raise ProviderError(context_error(msg) or msg)
                     async for piece in _read_stream(r, target, think):
                         if piece is THINKING:
                             if not reasoning_seen:
@@ -180,7 +182,8 @@ async def _read_stream(r: httpx.Response, target: ChatTarget, think: ThinkFilter
         else:
             if "error" in evt:
                 err = evt["error"]
-                raise ProviderError(err.get("message", str(err)) if isinstance(err, dict) else str(err))
+                msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                raise ProviderError(context_error(msg) or msg)
             delta = (evt.get("choices") or [{}])[0].get("delta") or {}
             if delta.get("reasoning_content") or delta.get("reasoning"):
                 yield THINKING  # separate reasoning channel (LM Studio, vLLM, DeepSeek): never shown
@@ -193,3 +196,44 @@ async def complete(target: ChatTarget, system: str, messages: list[dict], max_to
     """One-shot completion (thinking removed)."""
     parts = [p async for p in stream_chat(target, system, messages, max_tokens) if p is not THINKING]
     return "".join(parts).strip()
+
+
+_CONTEXT_WORDS = ("context length", "context window", "context_length", "maximum context", "n_ctx", "too many tokens",
+                  "prompt is too long", "exceeds the context", "context size")
+
+
+def context_error(message: str) -> str | None:
+    """A friendlier message when the prompt didn't fit the model's context window."""
+    low = message.lower()
+    if any(w in low for w in _CONTEXT_WORDS):
+        return (
+            "The question plus the retrieved passages didn't fit the model's context window. In LM Studio, reload the "
+            "model with a larger Context Length (16384 or more), or lower \"Context per answer\" in Settings."
+        )
+    return None
+
+
+_ctx_cache: dict[tuple[str, str], tuple[float, int | None]] = {}
+
+
+async def context_window(target: ChatTarget) -> int | None:
+    """Context length the model is loaded with, when the server says (LM Studio's /api/v0). Cached for a minute.
+    None means unknown: cloud models and Ollama are assumed to be large enough."""
+    if not target.local or target.kind != "openai_compat":
+        return None
+    key = (target.api_base, target.model)
+    now = time.monotonic()
+    if key in _ctx_cache and now - _ctx_cache[key][0] < 60:
+        return _ctx_cache[key][1]
+    root = target.api_base.rstrip("/").removesuffix("/v1")
+    ctx: int | None = None
+    try:
+        async with httpx.AsyncClient(timeout=3.0, transport=transport) as c:
+            r = await c.get(f"{root}/api/v0/models/{target.model}")
+            if r.status_code == 200:
+                # Absent when the model isn't loaded yet (LM Studio loads it on first use).
+                ctx = r.json().get("loaded_context_length") or None
+    except (httpx.HTTPError, ValueError):
+        ctx = None
+    _ctx_cache[key] = (now, ctx)
+    return ctx

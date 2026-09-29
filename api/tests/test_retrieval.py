@@ -99,6 +99,14 @@ def test_build_citations_and_confidence():
     assert cite.confidence(passages, cites) == "high"
     assert cite.confidence([P(1, "x", 0.6)], cites) == "low"  # best relevance < 0.75
     assert cite.confidence(passages, []) == "low"  # no valid citation
+    # A cited passage that clearly beats the rest counts, even below 0.75 (measured: 0.68 vs 0.32 next).
+    clear = [P(1, "Uses SQLite and Chroma.", 0.68), P(2, "Other.", 0.32)]
+    _, c1 = cite.build_citations("It uses **SQLite** [1].", clear)
+    assert cite.confidence(clear, c1) == "high"
+    close = [P(1, "Uses SQLite and Chroma.", 0.68), P(2, "Other.", 0.6)]
+    assert cite.confidence(close, cite.build_citations("It uses **SQLite** [1].", close)[1]) == "low"
+    _, c2 = cite.build_citations("Other [2].", clear)
+    assert cite.confidence(clear, c2) == "low"  # the answer didn't cite the standout passage
 
 
 # ---- retrieval against a real index ----
@@ -189,3 +197,59 @@ def test_relevance_calibration_matches_measurements():
     for answering in (-0.22, 0.17, 1.73, 3.10, 6.63):
         assert relevance(answering) >= HIGH_CONFIDENCE
     assert relevance(-5.0) == pytest.approx(0.5)
+
+
+# ---- context: budget, neighbours, whole-document coverage ----
+
+def _long_doc() -> bytes:
+    parts = [f"## Part {i}\n\nTopic{i} alpha{i} is described here. It relates to clause {i}. Detail {i} follows." for i in range(12)]
+    return "\n\n".join(parts).encode()
+
+
+def test_join_overlapping_drops_shared_sentences():
+    from app.rag.retrieve import join_overlapping
+
+    a = "First sentence here. The shared sentence is long enough."
+    b = "The shared sentence is long enough. Third sentence follows."
+    assert join_overlapping(a, b) == "First sentence here. The shared sentence is long enough. Third sentence follows."
+    assert join_overlapping("One thing.", "Other thing.") == "One thing.\n\nOther thing."
+
+
+def test_retrieve_respects_budget_and_widens_best_passage(client, owner):
+    from app.db import SessionLocal
+    from app.rag.retrieve import coverage
+
+    kb = owner["default_kb_id"]
+    upload(client, kb, ("guide.md", _long_doc(), "text/markdown"))
+    queue.process_all()
+    with SessionLocal() as db:
+        one = retrieve(db, kb, "What is topic5 alpha5?", top_k=8, token_budget=1, expand=False)
+        assert len(one) == 1 and "Topic5" in one[0].text  # the first passage always fits
+        wide = retrieve(db, kb, "What is topic5 alpha5?", top_k=1, token_budget=5000)
+        # The best passage now carries its neighbours, in reading order.
+        t = wide[0].text
+        assert t.index("Topic4") < t.index("Topic5") < t.index("Topic6")
+        spread = coverage(db, one[0].document_id, "Summarise this guide", token_budget=5000)
+        assert [p.ordinal for p in spread] == sorted(p.ordinal for p in spread) and len(spread) == 12
+        few = coverage(db, one[0].document_id, "Summarise this guide", token_budget=4 * spread[0].doc_chunks)
+        assert 1 <= len(few) < 12 and few[0].ordinal == 0
+
+
+def test_budget_overview_and_history_helpers():
+    from app.rag import answer
+
+    assert answer.budget_for(None, 8000) == 8000
+    assert answer.budget_for(4096, 8000) == answer.MIN_CONTEXT_TOKENS  # small LM Studio window
+    assert answer.budget_for(32768, 8000) == 8000
+    assert answer.is_overview("Can you summarize this document?") and answer.is_overview("key points of the report")
+    assert not answer.is_overview("How many days notice to terminate?")
+    hist = [
+        {"role": "user", "content": "Notice period?"},
+        {"role": "assistant", "content": "It is **60 days** [1]."},
+        {"role": "user", "content": "orphan question with no answer"},
+    ]
+    assert answer.history_messages(hist) == [
+        {"role": "user", "content": "Notice period?"},
+        {"role": "assistant", "content": "It is **60 days**."},
+    ]
+    assert "Workspace instructions" in answer.system_prompt("Be brief.") and answer.system_prompt("") == answer.SYSTEM

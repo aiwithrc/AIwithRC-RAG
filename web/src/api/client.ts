@@ -136,6 +136,7 @@ export interface WorkspaceSettings {
   chunk_size: number;
   chunk_overlap: number;
   top_k: number;
+  context_tokens: number;
   hybrid: boolean;
   rerank: boolean;
   keep_local: boolean;
@@ -344,7 +345,7 @@ export const endpoints = {
     b: Partial<
       Pick<
         WorkspaceSettings,
-        'custom_instructions' | 'chunk_size' | 'chunk_overlap' | 'top_k' | 'hybrid' | 'rerank' | 'keep_local' | 'ocr' | 'embedding_model'
+        'custom_instructions' | 'chunk_size' | 'chunk_overlap' | 'top_k' | 'context_tokens' | 'hybrid' | 'rerank' | 'keep_local' | 'ocr' | 'embedding_model'
       >
     >,
   ) => api<WorkspaceSettings>('/settings', { method: 'PATCH', body: b }),

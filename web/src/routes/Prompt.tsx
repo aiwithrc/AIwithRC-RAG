@@ -12,6 +12,9 @@ const EXAMPLES = [
   'Always mention dates, amounts and names exactly as written in the documents.',
   'Write for a non-expert: plain words, no jargon.',
   'When documents disagree, say so and cite both.',
+  'Give detailed, thorough answers: explain the context and include every relevant detail from the documents.',
+  'Keep answers to 3 sentences or fewer unless I ask for detail.',
+  'End every answer with a one-line "Bottom line:" summary.',
 ];
 
 export default function PromptPage() {
@@ -49,7 +52,7 @@ export default function PromptPage() {
       <Page>
         <PageHeader
           title="Prompt"
-          sub="Instructions added to every answer in this workspace: tone, format, what to focus on. Changes apply to the next question, no restart needed."
+          sub="Instructions for every answer in this workspace: length, tone, format, what to focus on. They override the default answer style. Changes apply to the next question, no restart needed."
         />
         {isLoading && <Spinner />}
         {error && <div className="text-[13px] text-err-text">{error.message}</div>}
@@ -109,11 +112,11 @@ export default function PromptPage() {
 
             <details className="rounded-[14px] border border-border bg-surface p-5 [&_summary]:cursor-pointer">
               <summary className="text-[15px] font-semibold">
-                Built-in rules <span className="font-normal text-muted">(always applied, before your instructions)</span>
+                Built-in prompt <span className="font-normal text-muted">(grounding rules and default answer style)</span>
               </summary>
               <p className="mb-3 mt-2 text-[13px] leading-[1.55] text-muted">
-                These keep answers grounded in your documents and make the numbered citations and source panel work. If
-                your instructions conflict with them, these win.
+                The grounding rules keep answers to what your documents say and make the numbered citations and source
+                panel work; they always apply. The answer style is only a default: your instructions above override it.
               </p>
               <pre className="m-0 whitespace-pre-wrap rounded-[10px] bg-surface2 p-3.5 font-mono text-[12.5px] leading-[1.6] text-text">
                 {data.built_in_prompt}

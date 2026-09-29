@@ -52,6 +52,11 @@ def strip_think(text: str) -> str:
     return text.replace("<think>", "").strip()
 
 
+def strip_markers(text: str) -> str:
+    """Answer text without [n] citation markers."""
+    return re.sub(r"[ \t]+([.,;:!?])", r"\1", _MARKER.sub("", text)).strip()
+
+
 def _expand(group: str) -> list[int]:
     nums: list[int] = []
     for part in re.split(r"\s*,\s*", group):
@@ -151,6 +156,19 @@ def closest_citation(p: Passage, question: str) -> Citation:
     )
 
 
+CLEAR_WINNER = 0.55  # a passage this relevant that stands out from the rest…
+CLEAR_MARGIN = 0.2  # …by this much is also strong evidence (long mixed-topic chunks rarely reach 0.75)
+
+
 def confidence(passages: list[Passage], citations: list[Citation]) -> str:
-    best = max((p.score for p in passages), default=0.0)
-    return "high" if best >= HIGH_CONFIDENCE and citations else "low"
+    if not citations:
+        return "low"
+    scores = sorted((p.score for p in passages), reverse=True)
+    best = scores[0] if scores else 0.0
+    cited_best = max(c.score for c in citations)
+    if best >= HIGH_CONFIDENCE:
+        return "high"
+    runner_up = scores[1] if len(scores) > 1 else 0.0
+    if cited_best == best and best >= CLEAR_WINNER and best - runner_up >= CLEAR_MARGIN:
+        return "high"
+    return "low"

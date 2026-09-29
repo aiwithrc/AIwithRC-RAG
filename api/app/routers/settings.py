@@ -34,6 +34,7 @@ class SettingsOut(BaseModel):
     chunk_size: int
     chunk_overlap: int
     top_k: int
+    context_tokens: int
     hybrid: bool
     rerank: bool
     keep_local: bool
@@ -52,7 +53,8 @@ class SettingsOut(BaseModel):
 class SettingsPatch(BaseModel):
     chunk_size: int | None = Field(default=None, ge=200, le=2000)
     chunk_overlap: int | None = Field(default=None, ge=0, le=400)
-    top_k: int | None = Field(default=None, ge=1, le=20)
+    top_k: int | None = Field(default=None, ge=1, le=40)
+    context_tokens: int | None = Field(default=None, ge=2000, le=200000)
     hybrid: bool | None = None
     rerank: bool | None = None
     keep_local: bool | None = None
@@ -78,7 +80,7 @@ def _get(db: Db, workspace_id: str) -> WorkspaceSettings:
 
 def _out(ws: WorkspaceSettings, can_edit: bool, reindexing: int = 0) -> SettingsOut:
     return SettingsOut(
-        chunk_size=ws.chunk_size, chunk_overlap=ws.chunk_overlap, top_k=ws.top_k, hybrid=ws.hybrid,
+        chunk_size=ws.chunk_size, chunk_overlap=ws.chunk_overlap, top_k=ws.top_k, context_tokens=ws.context_tokens, hybrid=ws.hybrid,
         rerank=ws.rerank, keep_local=ws.keep_local, ocr=ws.ocr, embedding_provider=ws.embedding_provider,
         embedding_model=ws.embedding_model, embedding_dims=EMBEDDING_MODELS.get(ws.embedding_model),
         embedding_models=EMBEDDING_MODELS, custom_instructions=ws.custom_instructions or "",
@@ -116,12 +118,12 @@ def patch_settings(body: SettingsPatch, auth: CurrentAuth, request: Request, db:
 
     reindex_reason: list[str] = []
     for field, label, unit in (("chunk_size", "Chunk size", " tokens"), ("chunk_overlap", "Overlap", " tokens"),
-                               ("top_k", "Passages per answer", "")):
+                               ("top_k", "Passages per answer", ""), ("context_tokens", "Context per answer", " tokens")):
         if field in changes and changes[field] != getattr(ws, field):
             old = getattr(ws, field)
             setattr(ws, field, changes[field])
-            if field == "top_k":
-                log(f"{label} changed", f"{old} → {changes[field]}")
+            if field in ("top_k", "context_tokens"):
+                log(f"{label} changed", f"{old} → {changes[field]}{unit}")
             else:
                 reindex_reason.append(f"{label} {old} → {changes[field]}{unit}")
     for field, label in TOGGLE_NAMES.items():
