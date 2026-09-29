@@ -3,9 +3,10 @@
 Upload documents, ask questions, and get answers that cite the exact passage they came from.
 Self-hosted, MIT licensed, runs on a laptop or a small VPS (2–4 GB RAM, no GPU).
 
-> **Status: phase 3 of 6 (ask).** Sign-in, profile, model providers, knowledge bases, document upload and
-> indexing, and streaming answers with citations and a source panel work. Sharing, suggested questions on the
-> empty chat and the activity log arrive in the next phases (see [Roadmap](#roadmap)).
+> **Status: phases 1–5 of 6 done, in testing.** Sign-in, profile, model providers, knowledge bases, document
+> upload and indexing, streaming answers with citations and a source panel, suggested questions, shared
+> answers, History (with CSV export), Settings and a workspace Prompt all work. Phase 6 (hardening, VPS guide)
+> is next (see [Roadmap](#roadmap)).
 
 ## Quick start (Docker)
 
@@ -143,8 +144,8 @@ design/  Clickable prototype, the source of truth for the UI (open AIwithRC-RAG.
 1. **Skeleton** ✅ auth, sessions, app shell, light/dark theme, Docker
 2. **Ingest** ✅ knowledge bases, uploads, parsing, chunking, local embeddings, live indexing status
 3. **Ask** ✅ provider connections, hybrid retrieval + rerank, streaming cited answers, source panel
-4. **Hook:** drop-to-answer first run, suggested questions, shareable public answers
-5. **History, Settings, Profile:** activity log, CSV export, workspace settings, re-index
+4. **Hook** ✅ drop-to-answer first run, suggested questions, shareable public answers
+5. **History, Settings, Profile** ✅ activity log, CSV export, workspace settings, re-index, Prompt screen
 6. **Harden and ship:** tests, mobile pass, VPS guide, screenshots
 
 ## License
