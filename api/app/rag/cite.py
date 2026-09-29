@@ -113,7 +113,8 @@ def highlight(chunk_text: str, claim: str) -> tuple[str, str, str]:
     scores = []
     for s in sentences:
         st = _terms(s)
-        scores.append(len(st & claim_terms) / (len(claim_terms) ** 0.5 * max(1, len(st)) ** 0.5) if st else 0.0)
+        # A claim with no content words (e.g. a bare "[1]" in a table cell) scores 0 everywhere: first sentence wins.
+        scores.append(len(st & claim_terms) / (max(1, len(claim_terms)) ** 0.5 * max(1, len(st)) ** 0.5) if st else 0.0)
     best = max(range(len(sentences)), key=lambda i: scores[i])
     lo = hi = best
     # Extend to an adjacent sentence that also supports the claim.

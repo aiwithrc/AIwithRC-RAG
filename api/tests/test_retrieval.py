@@ -253,3 +253,9 @@ def test_budget_overview_and_history_helpers():
         {"role": "assistant", "content": "It is **60 days**."},
     ]
     assert "Workspace instructions" in answer.system_prompt("Be brief.") and answer.system_prompt("") == answer.SYSTEM
+
+
+def test_citation_with_no_content_words_does_not_crash():
+    passages = [P(1, "Sign-in is rate-limited. Failed attempts are logged.", 0.9)]
+    text, cites = cite.build_citations("| Limit | Value |\n|---|---|\n| It | [1] |", passages)
+    assert len(cites) == 1 and cites[0].hit == "Sign-in is rate-limited."
