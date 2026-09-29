@@ -192,6 +192,44 @@ def parse_pdf(path: Path, *, ocr: bool = False) -> list[Block]:
 
 # ---- DOCX ----
 
+def _run_pt(run) -> float | None:
+    return run.font.size.pt if run.font.size is not None else None
+
+
+def _docx_body_size(document) -> float | None:
+    """Most common font size by amount of text: the body size that headings stand out from."""
+    weight: dict[float, int] = {}
+    for p in document.paragraphs:
+        for r in p.runs:
+            if (pt := _run_pt(r)) is not None and r.text.strip():
+                weight[pt] = weight.get(pt, 0) + len(r.text)
+    return max(weight, key=weight.get) if weight else None
+
+
+def _docx_visual_heading(p, text: str, body_pt: float | None) -> int | None:
+    """Heading level for a paragraph that *looks* like a heading without using a Heading style.
+
+    Many real documents (résumés, reports exported from other tools) format headings as bold or
+    larger text. Short, non-list, no trailing full stop, and either all bold (level 1, or 0 for a
+    big title) or starting in a larger font than the body (level 2, e.g. job-title lines).
+    """
+    if len(text) > 120 or text.endswith((".", ":", ";", ",")) or "\n" in text:
+        return None
+    ppr = p._p.pPr
+    if ppr is not None and ppr.numPr is not None or "List" in ((p.style.name if p.style is not None else "") or ""):
+        return None
+    runs = [r for r in p.runs if r.text.strip()]
+    if not runs:
+        return None
+    sizes = [pt for r in runs if (pt := _run_pt(r)) is not None]
+    biggest = max(sizes, default=None)
+    if all(r.bold for r in runs):
+        return 0 if body_pt and biggest and biggest >= body_pt + 4 else 1
+    if body_pt and (first := _run_pt(runs[0])) is not None and first > body_pt + 0.25:
+        return 2
+    return None
+
+
 def parse_docx(path: Path) -> list[Block]:
     import docx
     from docx.table import Table
@@ -204,6 +242,7 @@ def parse_docx(path: Path) -> list[Block]:
 
     blocks: list[Block] = []
     headings: list[tuple[int, str]] = []  # (level, text) stack
+    body_pt = _docx_body_size(document)
 
     def section() -> str | None:
         return " › ".join(t for _, t in headings) or None
@@ -215,8 +254,8 @@ def parse_docx(path: Path) -> list[Block]:
                 continue
             style = (item.style.name if item.style is not None else "") or ""
             m = re.match(r"(Heading|Title)\s*(\d*)", style)
-            if m:
-                level = 0 if m.group(1) == "Title" else int(m.group(2) or 1)
+            level = (0 if m.group(1) == "Title" else int(m.group(2) or 1)) if m else _docx_visual_heading(item, text, body_pt)
+            if level is not None:
                 while headings and headings[-1][0] >= level:
                     headings.pop()
                 headings.append((level, text))

@@ -33,6 +33,19 @@ def count_tokens(text: str) -> int:
     return len(_encoding().encode(text, disallowed_special=()))
 
 
+def context_header(filename: str, section: str | None) -> str:
+    """A short line naming the document and section, prepended to a chunk for embedding, keyword
+    search and reranking (not for display). "Acme_MSA_2024.pdf" + "§11.2 Termination" ->
+    "Acme MSA 2024 › §11.2 Termination". Helps passages that never repeat their subject ("he", "it")."""
+    stem = filename.rsplit(".", 1)[0]
+    stem = re.sub(r"[_\-]+", " ", stem).strip()
+    return f"{stem} › {section}" if section else stem
+
+
+def with_context(filename: str, section: str | None, text: str) -> str:
+    return f"{context_header(filename, section)}\n{text}"
+
+
 @dataclass
 class ChunkDraft:
     text: str

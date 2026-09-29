@@ -11,7 +11,7 @@ from app.db import SessionLocal, utcnow
 from app.jobs.queue import handler
 from app.models import Chunk, Document, Event, KnowledgeBase, WorkspaceSettings
 from app.rag import store
-from app.rag.chunk import chunk_blocks
+from app.rag.chunk import chunk_blocks, with_context
 from app.rag.embed import BATCH_SIZE, get_embedder
 from app.rag.parse import ParseError, parse
 from app.services import events
@@ -92,7 +92,8 @@ def run_ingest(payload: dict) -> None:
         embedder = get_embedder(embedding_model)
         vectors: list[list[float]] = []
         for i in range(0, len(drafts), BATCH_SIZE):
-            vectors += embedder.embed_passages([d.text for d in drafts[i : i + BATCH_SIZE]])
+            batch = drafts[i : i + BATCH_SIZE]
+            vectors += embedder.embed_passages([with_context(filename, d.section, d.text) for d in batch])
             done = min(len(drafts), i + BATCH_SIZE)
             if not _set(document_id, progress=55 + int(44 * done / len(drafts))):
                 return  # deleted while embedding
@@ -116,14 +117,15 @@ def run_ingest(payload: dict) -> None:
         first_rowid = store.next_fts_rowid(db)
         rows = [
             Chunk(
-                document_id=document_id, kb_id=kb_id, ordinal=i, text=d.text, page=d.page, section=d.section,
+                document_id=document_id, kb_id=kb_id, ordinal=i, text=d.text, page=d.page,
+                section=d.section[:500] if d.section else None,
                 token_count=d.token_count, fts_rowid=first_rowid + i,
             )
             for i, d in enumerate(drafts)
         ]
         db.add_all(rows)
         db.flush()
-        store.fts_insert(db, [(c.fts_rowid, kb_id, c.text) for c in rows])
+        store.fts_insert(db, [(c.fts_rowid, kb_id, with_context(filename, c.section, c.text)) for c in rows])
         try:
             store.upsert_vectors(kb_id, [c.id for c in rows], vectors, document_id)
         except Exception:

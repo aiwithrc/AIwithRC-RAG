@@ -30,6 +30,8 @@ ENV MODEL_CACHE_DIR=/app/models \
     HF_HUB_DISABLE_TELEMETRY=1
 RUN /app/.venv/bin/python -c "\
 from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5', cache_dir='/app/models'); \
+from fastembed.rerank.cross_encoder import TextCrossEncoder; \
+TextCrossEncoder('Xenova/ms-marco-MiniLM-L-6-v2', cache_dir='/app/models'); \
 import tiktoken; tiktoken.get_encoding('cl100k_base')"
 
 RUN useradd --uid 1000 --create-home app && mkdir -p /data && chown app:app /data && chown -R app:app /app/models
