@@ -256,3 +256,19 @@ def test_only_owner_edits_prompt(app, client, owner, monkeypatch):
         member.post("/api/auth/signup", json={"name": "Bo", "email": "bo@example.com", "password": PASSWORD})
         assert member.get("/api/settings").json()["can_edit"] is False
         assert member.patch("/api/settings", json={"custom_instructions": "hi"}).status_code == 403
+
+
+def test_smalltalk_gets_a_friendly_reply_without_search(client, setup, model):
+    assert [answer.smalltalk(m) for m in ("hi", "Hello there!", "hey, how are you?", "Thanks a lot", "ok thanks",
+                                          "bye", "What can you do?", "good morning")] == \
+        ["greeting", "greeting", "greeting", "thanks", "thanks", "bye", "about", "greeting"]
+    for q in ("hi, what is the notice period?", "Hi Acme notice", "help me find the payment terms", "thanks for the invoice terms?"):
+        assert answer.smalltalk(q) is None, q
+
+    model.requests.clear()
+    msg = next(d for e, d in ask(client, setup["chat"]["id"], "hi") if e == "done")["message"]
+    assert msg["content"].startswith("Hi! I answer questions about the documents in")
+    assert msg["confidence"] is None and msg["citations"] == []
+    assert model.requests == []  # no search, no model call
+    msg = next(d for e, d in ask(client, setup["chat"]["id"], "thank you!") if e == "done")["message"]
+    assert msg["content"].startswith("You're welcome") and msg["followups"] == []

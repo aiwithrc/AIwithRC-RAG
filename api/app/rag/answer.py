@@ -8,9 +8,11 @@ import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
+from sqlalchemy import select
 from starlette.concurrency import run_in_threadpool
 
 from app.db import SessionLocal
+from app.models import Document
 from app.providers.base import ProviderError
 from app.providers.chat import THINKING, ChatTarget, complete, context_window, stream_chat
 from app.rag import cite
@@ -83,6 +85,67 @@ _OVERVIEW = re.compile(
     r"table of contents|walk me through)\b",
     re.I,
 )
+
+
+_SMALLTALK = {
+    "greeting": re.compile(
+        r"(hi+|hey+|hello+|hiya|yo|howdy|greetings|namaste|hola|good (morning|afternoon|evening|day))"
+        r"( there| all| everyone| team| again)?( how are you( doing)?| hows it going| whats up)?"
+    ),
+    "thanks": re.compile(
+        r"(thanks?|thank you|thx|ty|cheers)( (so|very) much| a lot| again)?"
+        r"|(ok(ay)?|great|awesome|perfect|nice|cool|got it|noted)( thanks?| thank you)?"
+    ),
+    "bye": re.compile(r"(bye|goodbye|bye bye|see you|see ya|cya|good night)( later| soon| then)?"),
+    "about": re.compile(
+        r"who are you|what are you|what can you do|what do you do|help|how does this work|how do i use (this|you)"
+        r"|how are you( doing)?|whats up"
+    ),
+}
+
+
+def smalltalk(message: str) -> str | None:
+    """"greeting" / "thanks" / "bye" / "about" when the whole message is conversation, not a question about
+    the documents. Deliberately strict: "hi, what's the notice period?" is still a question."""
+    text = re.sub(r"[^a-z ]+", "", message.lower().replace("'", "")).strip()
+    text = re.sub(r"\s+", " ", text)
+    for kind, pattern in _SMALLTALK.items():
+        if text and pattern.fullmatch(text):
+            return kind
+    return None
+
+
+def smalltalk_reply(kind: str, kb_name: str, has_docs: bool, has_suggestions: bool) -> str:
+    if not has_docs:
+        start = f"Upload a document to **{kb_name}** on the Knowledge bases page, then ask me about it."
+    elif has_suggestions:
+        start = "Ask me anything about them, or try one of the questions below."
+    else:
+        start = "Ask me anything about them: a fact, a summary, a comparison, or names, dates and figures."
+    if kind == "thanks":
+        return "You're welcome! Ask another question whenever you like."
+    if kind == "bye":
+        return "Goodbye! This chat is saved in History, so you can pick it up later."
+    if kind == "about":
+        return (
+            f"I answer questions about the documents in **{kb_name}**, using only what they say. Every fact in an "
+            "answer has a number: click it to see the exact passage it came from. I can also summarise a document, "
+            f"compare sections, or pull out names, dates and figures. {start}"
+        )
+    return f"Hi! I answer questions about the documents in **{kb_name}**, and every answer cites its source. {start}"
+
+
+def _kb_starters(kb_id: str) -> tuple[bool, list[str]]:
+    """Whether the knowledge base has indexed documents, and the cached starter questions of the latest one."""
+    with SessionLocal() as db:
+        docs = db.scalars(
+            select(Document).where(Document.kb_id == kb_id, Document.status == "indexed")
+            .order_by(Document.created_at.desc()).limit(5)
+        ).all()
+        for d in docs:
+            if d.suggestions_json:
+                return True, json.loads(d.suggestions_json)[:3]
+        return bool(docs), []
 
 
 def is_overview(question: str) -> bool:
@@ -226,6 +289,15 @@ async def run(
 ) -> AsyncIterator[tuple[str, object]]:
     """Yields ("status", dict), ("token", str), ("result", Result), then maybe ("followups", list[str]).
     Raises ProviderError."""
+    if kind := smalltalk(question):
+        # "hi", "thanks", "what can you do": answer conversationally instead of searching the documents.
+        has_docs, starters = await run_in_threadpool(_kb_starters, kb_id)
+        yield "result", Result(
+            content=smalltalk_reply(kind, kb_name, has_docs, bool(starters)), confidence=None,
+            followups=starters if kind in ("greeting", "about") else [], standalone=question,
+        )
+        return
+
     yield "status", {"stage": "searching"}
     standalone = await rewrite(target, history, question)
     overview = is_overview(standalone)
