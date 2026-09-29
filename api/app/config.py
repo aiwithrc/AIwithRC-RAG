@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     database_url: str = ""  # defaults to sqlite in data_dir
     allow_signup: bool = False
     public_url: str = "http://localhost:8000"
-    project_url: str = "https://github.com/aiwithrc/aiwithrc-rag"
+    project_url: str = "https://github.com/aiwithrc/AIwithRC-RAG"
     auto_model_preference: str = "claude-sonnet*,gpt-4.1*,qwen3.5*,qwen2.5*,llama3.1*,gemma*"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     max_upload_mb: int = 50

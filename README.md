@@ -18,6 +18,7 @@ Self-hosted, MIT licensed, runs on a laptop or a small VPS (2–4 GB RAM, no GPU
 ## Quick start (Docker)
 
 ```bash
+git clone https://github.com/aiwithrc/AIwithRC-RAG.git && cd AIwithRC-RAG
 cp .env.example .env        # then set APP_SECRET to a long random value
 docker compose up --build
 ```

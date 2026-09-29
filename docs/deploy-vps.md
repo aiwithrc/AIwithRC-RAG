@@ -39,7 +39,7 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ## 3. Get the code and configure it
 
 ```bash
-git clone https://github.com/aiwithrc/aiwithrc-rag.git /opt/aiwithrc-rag
+git clone https://github.com/aiwithrc/AIwithRC-RAG.git /opt/aiwithrc-rag
 cd /opt/aiwithrc-rag
 cp .env.example .env
 nano .env
