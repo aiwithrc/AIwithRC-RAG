@@ -185,8 +185,13 @@ export function Topbar({ title, children }: { title: ReactNode; children?: React
           <IconMenu />
         </button>
       )}
-      <div className="min-w-0 flex-1 truncate text-[15px] font-semibold">{title}</div>
-      {children && <div className="flex shrink-0 items-center gap-1.5">{children}</div>}
+      {/* On phones the controls need the room more than the page title does. */}
+      {!(mobile && children) && <div className="min-w-0 flex-1 truncate text-[15px] font-semibold">{title}</div>}
+      {children && (
+        <div className={mobile ? 'flex min-w-0 flex-1 items-center justify-end gap-1.5' : 'flex shrink-0 items-center gap-1.5'}>
+          {children}
+        </div>
+      )}
     </header>
   );
 }

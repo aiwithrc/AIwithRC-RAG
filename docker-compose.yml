@@ -12,5 +12,8 @@ services:
       # SQLite DB, Chroma vectors, uploads and the embedding model cache all live here.
       - ./data:/data
     extra_hosts:
-      # Lets the container reach Ollama on the host at http://host.docker.internal:11434/v1 (Linux too).
+      # Lets the container reach LM Studio or Ollama on the host (http://host.docker.internal:1234/v1 or :11434/v1), Linux too.
       - "host.docker.internal:host-gateway"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

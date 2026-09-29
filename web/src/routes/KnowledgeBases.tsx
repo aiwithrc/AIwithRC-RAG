@@ -46,7 +46,7 @@ export default function KnowledgeBases() {
               <div className="flex-1 text-[13.5px] leading-[1.5] text-muted">{k.description || 'No description yet'}</div>
               <div className="flex w-full justify-between gap-2.5 border-t border-border pt-3 text-[12.5px] text-muted">
                 <span>
-                  {k.doc_count} docs · {k.chunk_count.toLocaleString()} chunks
+                  {k.doc_count} doc{k.doc_count === 1 ? '' : 's'} · {k.chunk_count.toLocaleString()} chunk{k.chunk_count === 1 ? '' : 's'}
                 </span>
                 <span>Updated {relativeTime(k.updated_at)}</span>
               </div>

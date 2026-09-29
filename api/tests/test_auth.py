@@ -107,3 +107,9 @@ def test_mutations_require_x_requested_with(app, owner):
         r = bare.post("/api/auth/login", json={"email": "ada@example.com", "password": PASSWORD})
         assert r.status_code == 403
         assert bare.get("/api/health").status_code == 200
+
+
+def test_security_headers(client):
+    r = client.get("/api/health")
+    assert r.headers["x-content-type-options"] == "nosniff" and r.headers["x-frame-options"] == "DENY"
+    assert r.headers["referrer-policy"] == "strict-origin-when-cross-origin"

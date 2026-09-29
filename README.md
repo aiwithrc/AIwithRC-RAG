@@ -3,11 +3,17 @@
 Upload documents, ask questions, and get answers that cite the exact passage they came from.
 Self-hosted, MIT licensed, runs on a laptop or a small VPS (2–4 GB RAM, no GPU).
 
-> **Status: phases 1–5 of 6 done, in testing.** Sign-in, profile, model providers, knowledge bases, document
+> **Status: all 6 phases done, in testing.** Sign-in, profile, model providers, knowledge bases, document
 > upload and indexing, streaming answers with citations and a source panel, suggested questions, shared
-> answers, History (with CSV export), Settings and a workspace Prompt all work. Phase 6 is in progress: answer
-> quality (context budget, whole-document summaries, conversation memory, structured answers) is done; the VPS
-> guide and screenshots are next (see [Roadmap](#roadmap)).
+> answers, History (with CSV export), Settings and a workspace Prompt all work. Phase 6 added better answers
+> (context budget, whole-document summaries, conversation memory, structured answers), a VPS guide and a mobile pass
+> (see [Roadmap](#roadmap)).
+
+![A cited answer with the source panel open](docs/screenshots/chat-sources.jpg)
+
+| Knowledge base | Prompt |
+|---|---|
+| ![Uploading and indexing documents](docs/screenshots/knowledge-base.jpg) | ![Workspace instructions for every answer](docs/screenshots/prompt.jpg) |
 
 ## Quick start (Docker)
 
@@ -21,6 +27,12 @@ After that, sign-up is closed unless you set `ALLOW_SIGNUP=true`.
 
 Everything the app stores (SQLite database, vectors, uploads, model cache) lives in `./data`.
 Back up that folder and you have backed up everything.
+
+## Deploy on a server (HTTPS)
+
+[docs/deploy-vps.md](docs/deploy-vps.md) takes a 2 GB VPS to `https://your-domain` in about 20 minutes: Docker,
+[Caddy](https://caddyserver.com) for automatic HTTPS ([deploy/Caddyfile](deploy/Caddyfile),
+[deploy/docker-compose.vps.yml](deploy/docker-compose.vps.yml)), backups, upgrades and troubleshooting.
 
 ## Local development
 
@@ -162,7 +174,8 @@ design/  Clickable prototype, the source of truth for the UI (open AIwithRC-RAG.
 3. **Ask** ✅ provider connections, hybrid retrieval + rerank, streaming cited answers, source panel
 4. **Hook** ✅ drop-to-answer first run, suggested questions, shareable public answers
 5. **History, Settings, Profile** ✅ activity log, CSV export, workspace settings, re-index, Prompt screen
-6. **Harden and ship:** tests, mobile pass, VPS guide, screenshots
+6. **Harden and ship** ✅ answer quality (context budget, summaries, chat memory), security headers, mobile pass,
+   VPS guide with Caddy, screenshots, 2 GB memory check (~950 MB peak indexing a 50-page PDF)
 
 ## License
 

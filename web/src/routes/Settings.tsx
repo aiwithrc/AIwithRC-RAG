@@ -172,7 +172,7 @@ export default function Settings() {
                 </Row>
                 <Row
                   title="Context per answer"
-                  sub="Most document tokens sent with one question, including the text around the best matches and whole-document coverage for summaries. Automatically lowered to fit the model's context window (LM Studio: set Context Length when loading the model)."
+                  sub="Most document text (tokens) sent with one question. Lowered automatically to fit the model's context window; in LM Studio, set Context Length when loading the model."
                 >
                   <Stepper label="context per answer" value={s.context_tokens} step={2000} min={2000} max={64000} disabled={!canEdit || patch.isPending}
                     onChange={(v) => patch.mutate({ context_tokens: v })} />

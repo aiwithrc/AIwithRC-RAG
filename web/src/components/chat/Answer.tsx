@@ -89,7 +89,7 @@ export function AnswerText({
                 <thead className="bg-surface2">
                   <tr>
                     {b.header.map((h, hi) => (
-                      <th key={hi} className="border-b border-border px-3 py-2 text-left font-semibold">
+                      <th key={hi} className="min-w-[7.5rem] border-b border-border px-3 py-2 text-left font-semibold [overflow-wrap:anywhere]">
                         {ic(h, `${bi}-h${hi}`)}
                       </th>
                     ))}
@@ -99,7 +99,7 @@ export function AnswerText({
                   {b.rows.map((r, ri) => (
                     <tr key={ri} className="border-b border-border last:border-b-0">
                       {r.map((c, ci) => (
-                        <td key={ci} className="px-3 py-2 align-top">
+                        <td key={ci} className="min-w-[7.5rem] px-3 py-2 align-top [overflow-wrap:anywhere]">
                           {ic(c, `${bi}-${ri}-${ci}`)}
                         </td>
                       ))}

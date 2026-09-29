@@ -1,0 +1,22 @@
+# HTTPS in front of AIwithRC-RAG. Caddy gets and renews a Let's Encrypt certificate on its own.
+# DOMAIN comes from .env (e.g. DOMAIN=rag.example.com); its DNS A record must point at this server.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Uploads are capped by the app (MAX_UPLOAD_MB, 50 by default); leave a little headroom here.
+	request_body {
+		max_size 60MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Answers stream as server-sent events; flush_interval -1 sends each token straight away.
+	reverse_proxy app:8000 {
+		flush_interval -1
+	}
+}

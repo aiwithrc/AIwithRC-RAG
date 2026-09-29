@@ -20,6 +20,13 @@ log = logging.getLogger("aiwithrc")
 
 _MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
 
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",  # no clickjacking; share pages are linked to, not embedded
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
+
 
 def create_app(*, run_migrations: bool = True) -> FastAPI:
     settings = get_settings()
@@ -50,7 +57,10 @@ def create_app(*, run_migrations: bool = True) -> FastAPI:
         path = request.url.path
         if request.method in _MUTATING and path.startswith("/api/") and not request.headers.get("x-requested-with"):
             return JSONResponse({"detail": "Missing X-Requested-With header."}, status_code=403)
-        return await call_next(request)
+        response = await call_next(request)
+        for name, value in _SECURITY_HEADERS.items():
+            response.headers.setdefault(name, value)
+        return response
 
     api = APIRouter(prefix="/api")
 

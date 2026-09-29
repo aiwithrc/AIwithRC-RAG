@@ -149,7 +149,7 @@ export default function KbDetail() {
                 </div>
                 {kb.description && <div className="text-[14px] text-muted">{kb.description}</div>}
                 <div className="text-[13px] text-muted">
-                  {indexed} of {docs.length} documents indexed
+                  {indexed} of {docs.length} document{docs.length === 1 ? '' : 's'} indexed
                 </div>
               </div>
               <Button
