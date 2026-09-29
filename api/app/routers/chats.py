@@ -16,16 +16,18 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from starlette.concurrency import run_in_threadpool
 
 from app.db import SessionLocal, utcnow
 from app.deps import CurrentAuth, Db
-from app.models import Chat, Event, KnowledgeBase, Message, ProviderConnection, WorkspaceSettings
+from app.models import Chat, Chunk, Document, Event, KnowledgeBase, Message, ProviderConnection, WorkspaceSettings
 from app.providers.auto import resolve_model
 from app.providers.base import ProviderError, runtime_for
 from app.providers.chat import ChatTarget
 from app.rag import answer
+from app.rag.retrieve import Passage
 from app.routers.kbs import get_kb_or_404
 from app.schemas.chat import AskIn, ChatCreate, ChatDetail, ChatOut, MessageOut, RegenerateIn
 from app.security.crypto import decrypt
@@ -327,3 +329,53 @@ def regenerate(message_id: str, body: RegenerateIn, auth: CurrentAuth, request: 
             target=target, conn=conn, assistant_id=msg.id, ip=client_ip(request), first=None,
         )
     )
+
+
+# ---- suggested questions (empty chat) ----
+
+class SuggestionsOut(BaseModel):
+    document_id: str | None
+    filename: str | None
+    questions: list[str]
+
+
+def _latest_doc_passages(kb_id: str) -> tuple[Document | None, list[Passage]]:
+    with SessionLocal() as db:
+        doc = db.scalars(
+            select(Document).where(Document.kb_id == kb_id, Document.status == "indexed").order_by(Document.created_at.desc())
+        ).first()
+        if doc is None:
+            return None, []
+        chunks = list(db.scalars(select(Chunk).where(Chunk.document_id == doc.id).order_by(Chunk.ordinal).limit(4)))
+        return doc, [
+            Passage(chunk_id=c.id, document_id=doc.id, filename=doc.filename, page=c.page, section=c.section,
+                    text=c.text, ordinal=c.ordinal, doc_chunks=len(chunks), score=1.0)
+            for c in chunks
+        ]
+
+
+def _cache_suggestions(document_id: str, questions: list[str]) -> None:
+    with SessionLocal() as db:
+        doc = db.get(Document, document_id)
+        if doc is not None:
+            doc.suggestions_json = json.dumps(questions)
+            db.commit()
+
+
+@router.get("/kbs/{kb_id}/suggestions", response_model=SuggestionsOut)
+async def suggestions(kb_id: str, auth: CurrentAuth, db: Db) -> SuggestionsOut:
+    """2-3 questions to try, generated once per document from its first passages (cached)."""
+    kb = get_kb_or_404(db, auth.workspace_id, kb_id)
+    doc, passages = await run_in_threadpool(_latest_doc_passages, kb.id)
+    if doc is None:
+        return SuggestionsOut(document_id=None, filename=None, questions=[])
+    if doc.suggestions_json:
+        return SuggestionsOut(document_id=doc.id, filename=doc.filename, questions=json.loads(doc.suggestions_json))
+    try:
+        _, _, target = _resolve_target(db, auth, kb, None, None)
+    except HTTPException:
+        return SuggestionsOut(document_id=doc.id, filename=doc.filename, questions=[])  # no usable model yet
+    questions = await answer.suggest_starters(target, passages)
+    if questions:
+        await run_in_threadpool(_cache_suggestions, doc.id, questions)
+    return SuggestionsOut(document_id=doc.id, filename=doc.filename, questions=questions)

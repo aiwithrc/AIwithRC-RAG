@@ -37,6 +37,8 @@ class FakeModel:
         system = body["system"] if "system" in body else body["messages"][0]["content"]
         if system.startswith(answer.REWRITE_SYSTEM[:20]):
             text = "What is the notice period to terminate the Acme agreement?"
+        elif system.startswith(answer.STARTER_SYSTEM[:20]):
+            text = '["What is the termination notice period?", "When are invoices due?", "Who are the parties?"]'
         elif system.startswith(answer.FOLLOWUP_SYSTEM[:20]):
             text = '["Can the client terminate for breach?", "When are invoices due?", "What is the notice period?"]'
         else:

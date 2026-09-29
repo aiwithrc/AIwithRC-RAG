@@ -142,10 +142,59 @@ export interface WorkspaceSettings {
   ocr: boolean;
   embedding_provider: string;
   embedding_model: string;
+  embedding_dims: number | null;
+  embedding_models: Record<string, number>;
+  reindexing: number;
   custom_instructions: string;
   built_in_prompt: string;
   max_instructions: number;
   can_edit: boolean;
+}
+
+export interface ShareInfo {
+  id: string;
+  token: string;
+  url: string;
+  include_sources: boolean;
+}
+
+export interface PublicShare {
+  question: string;
+  answer: string;
+  confidence: 'high' | 'low' | null;
+  model: string | null;
+  kb_name: string | null;
+  answered_at: string;
+  citations: Citation[];
+  include_sources: boolean;
+  project_url: string;
+}
+
+export type EventCategory = 'chat' | 'doc' | 'login' | 'key' | 'settings';
+
+export interface ActivityEvent {
+  id: string;
+  category: EventCategory;
+  title: string;
+  detail: string;
+  tone: 'ok' | 'err' | 'accent' | null;
+  tag: string | null;
+  link: string | null;
+  user_name: string | null;
+  ip: string | null;
+  created_at: string;
+}
+
+export interface EventPage {
+  items: ActivityEvent[];
+  counts: Record<'all' | EventCategory, number>;
+  next_cursor: string | null;
+}
+
+export interface Suggestions {
+  document_id: string | null;
+  filename: string | null;
+  questions: string[];
 }
 
 export interface Citation {
@@ -291,8 +340,26 @@ export const endpoints = {
   deleteDocument: (id: string) => api<void>(`/documents/${id}`, { method: 'DELETE' }),
   retryDocument: (id: string) => api<Doc>(`/documents/${id}/retry`, { method: 'POST' }),
   settings: () => api<WorkspaceSettings>('/settings'),
-  patchSettings: (b: Partial<Pick<WorkspaceSettings, 'custom_instructions'>>) =>
-    api<WorkspaceSettings>('/settings', { method: 'PATCH', body: b }),
+  patchSettings: (
+    b: Partial<
+      Pick<
+        WorkspaceSettings,
+        'custom_instructions' | 'chunk_size' | 'chunk_overlap' | 'top_k' | 'hybrid' | 'rerank' | 'keep_local' | 'ocr' | 'embedding_model'
+      >
+    >,
+  ) => api<WorkspaceSettings>('/settings', { method: 'PATCH', body: b }),
+  reindexAll: () => api<WorkspaceSettings>('/settings/reindex', { method: 'POST' }),
+  share: (messageId: string, include_sources: boolean) =>
+    api<ShareInfo>(`/messages/${messageId}/share`, { method: 'POST', body: { include_sources } }),
+  updateShare: (id: string, include_sources: boolean) =>
+    api<ShareInfo>(`/shares/${id}`, { method: 'PATCH', body: { include_sources } }),
+  revokeShare: (id: string) => api<void>(`/shares/${id}`, { method: 'DELETE' }),
+  publicShare: (token: string) => api<PublicShare>(`/public/shares/${token}`),
+  events: (p: { category?: string; q?: string; cursor?: string }) => {
+    const qs = new URLSearchParams(Object.entries(p).filter(([, v]) => v) as [string, string][]).toString();
+    return api<EventPage>(`/events${qs ? `?${qs}` : ''}`);
+  },
+  suggestions: (kbId: string) => api<Suggestions>(`/kbs/${kbId}/suggestions`),
   chats: () => api<ChatSummary[]>('/chats'),
   createChat: (kb_id: string) => api<ChatSummary>('/chats', { method: 'POST', body: { kb_id } }),
   chat: (id: string) => api<ChatDetail>(`/chats/${id}`),

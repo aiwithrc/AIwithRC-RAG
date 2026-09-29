@@ -1,14 +1,15 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { endpoints, type ChatDetail, type Kb } from '../api/client';
 import { Topbar } from '../components/AppShell';
 import { KbPicker, ModelPicker, useModelChoice } from '../components/chat/Pickers';
+import { ShareModal } from '../components/chat/ShareModal';
 import { SourcePanel } from '../components/chat/SourcePanel';
 import { Thread, type ActiveSource } from '../components/chat/Thread';
 import { DropZone } from '../components/DropZone';
-import { IconArrowUp, IconLock, IconUpload } from '../components/icons';
+import { IconArrowUp, IconLink, IconLock, IconUpload } from '../components/icons';
 import { Pill, Spinner, cx } from '../components/ui';
 import { askInChat, chatKey, chatsKey, isStreaming, regenerate, useChat } from '../hooks/useChat';
 import { ACCEPT, stageLabel, useDocuments, useUpload } from '../hooks/useDocuments';
@@ -73,6 +74,16 @@ function EmptyChat({
   const startUpload = (files: File[]) => upload.mutate(files, { onSuccess: (res) => setQuickId(res.documents[0]?.id ?? null) });
   const rejected = upload.data?.rejected ?? [];
   const canSend = !!draft.trim() && !!kb && !noModel;
+
+  // Questions to try, generated from the KB's latest document (refetched once a dropped file is ready).
+  const readyDoc = quick?.status === 'indexed' ? quick.id : null;
+  const sugg = useQuery({
+    queryKey: ['suggestions', kb?.id, readyDoc],
+    queryFn: () => endpoints.suggestions(kb!.id),
+    enabled: !!kb && !noModel && kb.indexed_count + (readyDoc ? 1 : 0) > 0,
+    staleTime: 5 * 60_000,
+  });
+  const questions = sugg.data?.questions ?? [];
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -194,6 +205,32 @@ function EmptyChat({
             {upload.error?.message ?? rejected.map((r) => `${r.filename}: ${r.reason}`).join(' ')}
           </div>
         )}
+
+        {(questions.length > 0 || sugg.isFetching) && (
+          <div className="flex flex-col gap-2.5">
+            <div className="text-[12.5px] font-medium text-muted">
+              {sugg.data?.filename ? `Try asking about ${sugg.data.filename}` : 'Try asking'}
+            </div>
+            {sugg.isFetching && !questions.length ? (
+              <div className="flex items-center gap-2 text-[13px] text-muted">
+                <Spinner className="h-3.5 w-3.5" /> Reading the document for good questions…
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {questions.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => onAsk(q)}
+                    className="rounded-full border border-border bg-surface px-[13px] py-2 text-left text-[13.5px] text-text hover:border-accent hover:text-accent-text"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -213,6 +250,7 @@ export default function Chat() {
   const [draft, setDraft] = useState('');
   const [startError, setStartError] = useState<string | null>(null);
   const [active, setActive] = useState<ActiveSource | null>(null);
+  const [shareId, setShareId] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
   // "New chat" resets to the user's default KB, or to the KB we were sent here with.
@@ -261,6 +299,7 @@ export default function Chat() {
   };
 
   const activeMsg = active ? messages.find((m) => m.id === active.messageId) : undefined;
+  const lastAnswer = [...messages].reverse().find((m) => m.role === 'assistant' && !m.stage && !m.error && m.content && !m.id.startsWith('pending'));
   const title = chatId ? detail?.chat.title ?? 'Chat' : 'New chat';
 
   return (
@@ -268,7 +307,19 @@ export default function Chat() {
       <Topbar title={title}>
         <KbPicker kbs={kbs ?? []} kb={kb} onSelect={setKbId} disabled={!!chatId} />
         <ModelPicker m={model} />
+        {chatId && lastAnswer && (
+          <button
+            type="button"
+            onClick={() => setShareId(lastAnswer.id)}
+            aria-label="Share the latest answer"
+            className="flex h-[34px] items-center gap-1.5 rounded-[9px] border border-border bg-surface px-2.5 text-[13px] font-medium text-text hover:bg-surface2"
+          >
+            <IconLink size={15} />
+            <span className="hidden min-[820px]:inline">Share</span>
+          </button>
+        )}
       </Topbar>
+      <ShareModal messageId={shareId} onClose={() => setShareId(null)} />
 
       {!chatId ? (
         <EmptyChat
@@ -298,6 +349,7 @@ export default function Chat() {
                   onCite={(messageId, n) => setActive({ messageId, n })}
                   onFollow={followUp}
                   onRegenerate={(id) => !busy && void regenerate(qc, chatId, id, model.choice)}
+                  onShare={setShareId}
                 />
               )}
             </div>

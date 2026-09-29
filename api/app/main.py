@@ -13,7 +13,8 @@ from app.db import init_engine
 from app.migrate import upgrade_to_head
 from app.jobs import ingest  # noqa: F401  (registers the ingest job handler)
 from app.jobs.worker import worker
-from app.routers import auth, chats, connections, documents, kbs, me, settings as settings_router
+from app.routers import auth, chats, connections, documents, events, kbs, me, shares
+from app.routers import settings as settings_router
 
 log = logging.getLogger("aiwithrc")
 
@@ -64,12 +65,15 @@ def create_app(*, run_migrations: bool = True) -> FastAPI:
     api.include_router(connections.router)
     api.include_router(chats.router)
     api.include_router(settings_router.router)
+    api.include_router(shares.router)
+    api.include_router(events.router)
     app.include_router(api)
 
     @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)
     def api_not_found(rest: str) -> JSONResponse:
         return JSONResponse({"detail": "Not found"}, status_code=404)
 
+    app.include_router(shares.public)  # /s/{token}: server-rendered meta tags, before the SPA catch-all
     _mount_spa(app, settings.web_dist)
     return app
 

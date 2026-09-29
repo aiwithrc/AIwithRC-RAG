@@ -141,6 +141,19 @@ async def suggest_followups(target: ChatTarget, passages: list[Passage], questio
     return parse_followups(cite.strip_think(text), question)
 
 
+STARTER_SYSTEM = """Suggest questions a new reader would ask about this document, answerable from the passages. Reply with only a JSON array of 3 short, specific questions (under 12 words each), and nothing else."""
+
+
+async def suggest_starters(target: ChatTarget, passages: list[Passage]) -> list[str]:
+    """Questions to try on the empty chat screen, from the start of the latest document."""
+    try:
+        content = "Passages:\n\n" + format_passages(passages)
+        text = await complete(target, STARTER_SYSTEM, [{"role": "user", "content": content}], max_tokens=150)
+    except ProviderError:
+        return []
+    return parse_followups(cite.strip_think(text), "")
+
+
 def _retrieve(kb_id: str, question: str, s: Settings) -> list[Passage]:
     with SessionLocal() as db:
         return retrieve(

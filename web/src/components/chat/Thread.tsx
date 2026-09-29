@@ -25,6 +25,15 @@ function CopyIcon() {
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
 function RegenIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -43,6 +52,7 @@ function AssistantMessage({
   onCite,
   onFollow,
   onRegenerate,
+  onShare,
 }: {
   m: Message;
   kbName: string;
@@ -52,6 +62,7 @@ function AssistantMessage({
   onCite: (n: number) => void;
   onFollow: (q: string) => void;
   onRegenerate: () => void;
+  onShare: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const activeN = active?.messageId === m.id ? active.n : null;
@@ -152,6 +163,16 @@ function AssistantMessage({
             <CopyIcon />
             {copied ? 'Copied' : 'Copy'}
           </button>
+          {!m.id.startsWith('pending') && (
+            <button
+              type="button"
+              onClick={onShare}
+              className="flex h-[30px] items-center gap-1.5 rounded-[7px] border-none bg-transparent px-2 text-[12.5px] text-muted hover:bg-surface2 hover:text-text"
+            >
+              <ShareIcon />
+              Share
+            </button>
+          )}
           <button
             type="button"
             onClick={onRegenerate}
@@ -192,6 +213,7 @@ export function Thread({
   onCite,
   onFollow,
   onRegenerate,
+  onShare,
 }: {
   messages: Message[];
   kbName: string;
@@ -200,6 +222,7 @@ export function Thread({
   onCite: (messageId: string, n: number) => void;
   onFollow: (q: string) => void;
   onRegenerate: (messageId: string) => void;
+  onShare: (messageId: string) => void;
 }) {
   return (
     <div className="mx-auto flex max-w-[760px] flex-col gap-[30px] px-4 pb-6 pt-7 min-[820px]:px-8">
@@ -222,6 +245,7 @@ export function Thread({
             onCite={(n) => onCite(m.id, n)}
             onFollow={onFollow}
             onRegenerate={() => onRegenerate(m.id)}
+            onShare={() => onShare(m.id)}
           />
         ),
       )}
