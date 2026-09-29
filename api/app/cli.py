@@ -1,6 +1,6 @@
 """Admin CLI: `python -m app.cli <command>`.
 
-Commands: create-user, reset-password, check (index QA), reindex.
+Commands: create-user, reset-password, check (index QA), reindex, reencrypt-keys.
 """
 
 import argparse
@@ -108,6 +108,34 @@ def reindex(args: argparse.Namespace) -> None:
     check(args)
 
 
+def reencrypt_keys(args: argparse.Namespace) -> None:
+    """After APP_SECRET changed: re-encrypt saved provider API keys from the old secret to the current one."""
+    from app.models import ProviderConnection
+    from app.security.crypto import decrypt, encrypt
+
+    fixed = ok = failed = 0
+    with SessionLocal() as db:
+        for c in db.scalars(select(ProviderConnection)):
+            if not c.api_key_enc:
+                continue
+            try:
+                decrypt(c.api_key_enc)
+                ok += 1
+                continue
+            except ValueError:
+                pass
+            try:
+                c.api_key_enc = encrypt(decrypt(c.api_key_enc, secret=args.old_secret))
+                fixed += 1
+            except ValueError:
+                failed += 1
+                print(f"  {c.name} ({c.api_base}): not readable with either secret; add its key again on the API keys screen.")
+        db.commit()
+    print(f"Re-encrypted {fixed} key(s); {ok} already fine; {failed} unreadable.")
+    if failed:
+        sys.exit(1)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="AIwithRC-RAG admin commands")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -131,6 +159,10 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("reindex", help="Re-parse and re-embed every document, then run check")
     p.add_argument("--kb", help="Only this knowledge base id")
     p.set_defaults(fn=reindex)
+
+    p = sub.add_parser("reencrypt-keys", help="After changing APP_SECRET: move saved API keys to the new secret")
+    p.add_argument("--old-secret", required=True, help='The previous APP_SECRET ("change-me-in-production" if unset)')
+    p.set_defaults(fn=reencrypt_keys)
 
     args = parser.parse_args(argv)
     settings = get_settings()

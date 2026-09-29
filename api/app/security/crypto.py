@@ -10,9 +10,9 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from app.config import get_settings
 
 
-def _fernet() -> Fernet:
-    secret = get_settings().app_secret.encode()
-    key = HKDF(algorithm=hashes.SHA256(), length=32, salt=b"aiwithrc-rag", info=b"secrets-at-rest").derive(secret)
+def _fernet(secret: str | None = None) -> Fernet:
+    raw = (secret if secret is not None else get_settings().app_secret).encode()
+    key = HKDF(algorithm=hashes.SHA256(), length=32, salt=b"aiwithrc-rag", info=b"secrets-at-rest").derive(raw)
     return Fernet(base64.urlsafe_b64encode(key))
 
 
@@ -20,9 +20,10 @@ def encrypt(plaintext: str) -> str:
     return _fernet().encrypt(plaintext.encode()).decode()
 
 
-def decrypt(token: str) -> str:
+def decrypt(token: str, secret: str | None = None) -> str:
+    """Decrypt with APP_SECRET, or with `secret` (re-encrypting keys after APP_SECRET changed)."""
     try:
-        return _fernet().decrypt(token.encode()).decode()
+        return _fernet(secret).decrypt(token.encode()).decode()
     except InvalidToken as e:
         raise ValueError("Could not decrypt secret. Did APP_SECRET change?") from e
 

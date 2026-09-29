@@ -143,7 +143,7 @@ All settings are environment variables; see [`.env.example`](.env.example) for t
 
 | Variable | Default | What it does |
 |---|---|---|
-| `APP_SECRET` | *(insecure default)* | Encrypts stored provider API keys. **Set it, and don't change it later.** |
+| `APP_SECRET` | *(insecure default)* | Encrypts stored provider API keys. **Set it, and don't change it later.** If you must, run `python -m app.cli reencrypt-keys --old-secret <previous>` afterwards (the previous value is `change-me-in-production` if it was never set). |
 | `DATA_DIR` | `./data` (`/data` in Docker) | Database, vectors, uploads, model cache |
 | `ALLOW_SIGNUP` | `false` | Allow sign-ups after the first (owner) account |
 | `PUBLIC_URL` | `http://localhost:8000` | Used in share links and the login footer |

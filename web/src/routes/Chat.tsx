@@ -298,8 +298,24 @@ export default function Chat() {
     void askInChat(qc, chatId, q, model.choice);
   };
 
+  const retry = (id: string) => {
+    if (!chatId || busy) return;
+    if (!id.startsWith('failed-')) {
+      void regenerate(qc, chatId, id, model.choice);
+      return;
+    }
+    // Rejected before it was saved: drop the unsent pair and ask the same question again.
+    const i = messages.findIndex((m) => m.id === id);
+    const question = i > 0 && messages[i - 1].role === 'user' ? messages[i - 1] : undefined;
+    if (!question) return;
+    qc.setQueryData<ChatDetail>(chatKey(chatId), (old) =>
+      old ? { ...old, messages: old.messages.filter((m) => m.id !== id && m.id !== question.id) } : old,
+    );
+    void askInChat(qc, chatId, question.content, model.choice);
+  };
+
   const activeMsg = active ? messages.find((m) => m.id === active.messageId) : undefined;
-  const lastAnswer = [...messages].reverse().find((m) => m.role === 'assistant' && !m.stage && !m.error && m.content && !m.id.startsWith('pending'));
+  const lastAnswer = [...messages].reverse().find((m) => m.role === 'assistant' && !m.stage && !m.error && m.content && !m.id.startsWith('pending') && !m.id.startsWith('failed-'));
   const title = chatId ? detail?.chat.title ?? 'Chat' : 'New chat';
 
   return (
@@ -348,7 +364,7 @@ export default function Chat() {
                   active={active}
                   onCite={(messageId, n) => setActive({ messageId, n })}
                   onFollow={followUp}
-                  onRegenerate={(id) => !busy && void regenerate(qc, chatId, id, model.choice)}
+                  onRegenerate={retry}
                   onShare={setShareId}
                 />
               )}

@@ -141,3 +141,22 @@ def test_helpers():
     assert pick_auto(["mystery-model"], ["gpt-4.1*"]) == "mystery-model"
     assert pick_auto(["nomic-embed-text"], []) == "nomic-embed-text"
     assert pick_auto([], []) is None
+
+
+def test_reencrypt_keys_after_secret_change(client, owner):
+    import argparse
+
+    from app import cli
+    from app.db import SessionLocal
+    from app.models import ProviderConnection
+    from app.security.crypto import _fernet, decrypt
+
+    r = client.post("/api/connections", json={"api_base": "http://localhost:1234/v1", "api_key": "lm-key-123"})
+    assert r.status_code == 201
+    with SessionLocal() as db:  # simulate a key saved under the previous APP_SECRET
+        c = db.get(ProviderConnection, r.json()["id"])
+        c.api_key_enc = _fernet("old-secret").encrypt(b"lm-key-123").decode()
+        db.commit()
+    cli.reencrypt_keys(argparse.Namespace(old_secret="old-secret"))
+    with SessionLocal() as db:
+        assert decrypt(db.get(ProviderConnection, r.json()["id"]).api_key_enc) == "lm-key-123"

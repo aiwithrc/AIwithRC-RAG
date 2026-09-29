@@ -43,6 +43,7 @@ function blankAnswer(id: string): Message {
  */
 function run(qc: QueryClient, chatId: string, path: string, body: Body, targetId: string) {
   void qc.cancelQueries({ queryKey: chatKey(chatId) });
+  let rejected = false;
   const update = (fn: (m: Message) => Message) =>
     qc.setQueryData<ChatDetail>(chatKey(chatId), (old) =>
       old ? { ...old, messages: old.messages.map((m) => (m.id === targetId ? fn(m) : m)) } : old,
@@ -68,12 +69,36 @@ function run(qc: QueryClient, chatId: string, path: string, body: Body, targetId
       qc.setQueryData<ChatDetail>(chatKey(chatId), (old) =>
         old ? { ...old, messages: old.messages.map((m) => (m.id === id ? { ...m, followups } : m)) } : old,
       ),
-    onError: (detail, msg) =>
-      msg ? settle({ ...msg, error: detail }) : update((m) => ({ ...m, stage: undefined, error: detail })),
+    onError: (detail, msg) => {
+      if (msg) {
+        settle({ ...msg, error: detail });
+        return;
+      }
+      // Rejected before anything was saved (e.g. no usable model): the server has neither the question nor an
+      // answer, so a resync would erase both. Keep them on screen, under ids that can't clash with the next ask.
+      rejected = true;
+      const tag = Date.now();
+      qc.setQueryData<ChatDetail>(chatKey(chatId), (old) =>
+        old
+          ? {
+              ...old,
+              messages: old.messages.map((m) =>
+                m.id === targetId
+                  ? { ...m, id: targetId === PENDING ? `failed-${tag}` : m.id, stage: undefined, error: detail }
+                  : m.id === 'pending-user'
+                    ? { ...m, id: `unsent-${tag}` }
+                    : m,
+              ),
+            }
+          : old,
+      );
+    },
   }).finally(() => {
     qc.invalidateQueries({ queryKey: chatsKey });
     // Resync with the server (real ids, title, saved follow-ups) unless another answer is streaming.
-    if (!isStreaming(qc.getQueryData<ChatDetail>(chatKey(chatId)))) qc.invalidateQueries({ queryKey: chatKey(chatId) });
+    if (!rejected && !isStreaming(qc.getQueryData<ChatDetail>(chatKey(chatId)))) {
+      qc.invalidateQueries({ queryKey: chatKey(chatId) });
+    }
   });
 }
 
