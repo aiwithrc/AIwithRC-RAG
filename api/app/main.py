@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.db import init_engine
 from app.migrate import upgrade_to_head
-from app.routers import auth, kbs, me
+from app.routers import auth, connections, kbs, me
 
 log = logging.getLogger("aiwithrc")
 
@@ -52,6 +52,7 @@ def create_app(*, run_migrations: bool = True) -> FastAPI:
     api.include_router(auth.router)
     api.include_router(me.router)
     api.include_router(kbs.router)
+    api.include_router(connections.router)
     app.include_router(api)
 
     @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)

@@ -6,6 +6,7 @@ import { Topbar } from '../components/AppShell';
 import { Dropdown, DropdownItem } from '../components/Dropdown';
 import { IconArrowUp, IconBook, IconLock, IconUpload } from '../components/icons';
 import { Pill, cx } from '../components/ui';
+import { useConnections } from '../hooks/useConnections';
 import { useKbs } from '../hooks/useKbs';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useMe } from '../hooks/useMe';
@@ -28,7 +29,9 @@ export default function Chat() {
   const mobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
+  const { data: conns } = useConnections();
   const [kbId, setKbId] = useState<string | null>(null);
+  const [pick, setPick] = useState<{ conn: string; model: string } | null>(null);
   const [draft, setDraft] = useState('');
 
   // "New chat" resets to the user's default knowledge base.
@@ -40,6 +43,17 @@ export default function Chat() {
 
   const kb = kbs?.find((k) => k.id === kbId) ?? kbs?.find((k) => k.id === me?.default_kb_id) ?? kbs?.[0];
   const kbName = kb?.name ?? 'your documents';
+
+  // Every chat model from every connection; default = first connection's current pick (Auto or fixed).
+  const options = (conns ?? []).flatMap((c) =>
+    c.chat_models.map((m) => ({ conn: c, model: m, via: `${c.name} · ${c.runtime === 'local' ? 'local' : 'cloud'}` })),
+  );
+  const firstConn = conns?.find((c) => c.resolved_model);
+  const current =
+    options.find((o) => pick && o.conn.id === pick.conn && o.model === pick.model) ??
+    (firstConn ? options.find((o) => o.conn.id === firstConn.id && o.model === firstConn.resolved_model) : undefined) ??
+    options[0];
+  const cloudModel = current?.conn.runtime === 'cloud';
 
   return (
     <>
@@ -80,18 +94,57 @@ export default function Chat() {
         </Dropdown>
         <Dropdown
           heading="Answer with"
-          width={280}
-          leading={<span className="h-[7px] w-[7px] shrink-0 rounded-full bg-border-strong" />}
-          label="No model"
-        >
-          {(close) => (
-            <div className="flex flex-col gap-2 px-2.5 pb-2.5 pt-1 text-[13px] leading-[1.5] text-muted">
-              No model provider connected yet.
-              <Link to="/keys" onClick={close} className="font-medium">
-                Connect one on the API keys screen
-              </Link>
-            </div>
+          width={300}
+          leading={
+            <span
+              className={cx(
+                'h-[7px] w-[7px] shrink-0 rounded-full',
+                !current ? 'bg-border-strong' : cloudModel ? 'bg-accent' : 'bg-ok',
+              )}
+            />
+          }
+          label={current ? current.model.split('/').pop() : 'No model'}
+          footer={(close) => (
+            <Link
+              to="/keys"
+              onClick={close}
+              className="block rounded-lg px-2.5 py-2 text-[13px] font-medium hover:bg-surface2 hover:no-underline"
+            >
+              Manage model providers
+            </Link>
           )}
+        >
+          {(close) =>
+            options.length === 0 ? (
+              <div className="px-2.5 pb-2.5 pt-1 text-[13px] leading-[1.5] text-muted">No model provider connected yet.</div>
+            ) : (
+              <div className="max-h-[320px] overflow-auto">
+                {options.map((o) => (
+                  <DropdownItem
+                    key={o.conn.id + o.model}
+                    selected={current === o}
+                    onSelect={() => {
+                      setPick({ conn: o.conn.id, model: o.model });
+                      close();
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={cx(
+                          'h-[7px] w-[7px] shrink-0 rounded-full',
+                          o.conn.runtime === 'local' ? 'bg-ok' : 'bg-accent',
+                        )}
+                      />
+                      <div className="min-w-0">
+                        <div className="truncate text-[13.5px] font-medium">{o.model}</div>
+                        <div className="text-[12px] text-muted">{o.via}</div>
+                      </div>
+                    </div>
+                  </DropdownItem>
+                ))}
+              </div>
+            )
+          }
         </Dropdown>
       </Topbar>
 
@@ -101,10 +154,10 @@ export default function Chat() {
           style={{ paddingTop: mobile ? 40 : '11vh' }}
         >
           <div className="flex flex-col items-center gap-3 text-center">
-            {kb?.runtime === 'cloud' ? (
+            {(current ? cloudModel : kb?.runtime === 'cloud') ? (
               <Pill tone="warn" className="px-[11px] py-[5px] text-[12.5px]">
                 <IconLock />
-                Cloud knowledge base · passages sent via API
+                {current ? `Uses ${current.conn.name} · passages sent via API` : 'Cloud knowledge base · passages sent via API'}
               </Pill>
             ) : (
               <Pill tone="ok" className="px-[11px] py-[5px] text-[12.5px]">

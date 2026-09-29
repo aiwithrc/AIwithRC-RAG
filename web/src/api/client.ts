@@ -77,6 +77,20 @@ export interface Kb {
   updated_at: string;
 }
 
+export interface Connection {
+  id: string;
+  name: string;
+  api_base: string;
+  masked_key: string;
+  kind: 'openai_compat' | 'anthropic';
+  runtime: 'local' | 'cloud';
+  models: string[];
+  chat_models: string[];
+  selected_model: string; // 'auto' or a model id
+  resolved_model: string | null;
+  created_at: string;
+}
+
 // ---- Endpoints ----
 
 export const endpoints = {
@@ -92,4 +106,11 @@ export const endpoints = {
   revokeOtherSessions: () => api<void>('/me/sessions?others=true', { method: 'DELETE' }),
   deleteMe: () => api<void>('/me', { method: 'DELETE' }),
   kbs: () => api<Kb[]>('/kbs'),
+  connections: () => api<Connection[]>('/connections'),
+  addConnection: (b: { api_base: string; api_key: string }) =>
+    api<Connection>('/connections', { method: 'POST', body: b }),
+  setConnectionModel: (id: string, selected_model: string) =>
+    api<Connection>(`/connections/${id}`, { method: 'PATCH', body: { selected_model } }),
+  refreshConnection: (id: string) => api<Connection>(`/connections/${id}/refresh`, { method: 'POST' }),
+  removeConnection: (id: string) => api<void>(`/connections/${id}`, { method: 'DELETE' }),
 };

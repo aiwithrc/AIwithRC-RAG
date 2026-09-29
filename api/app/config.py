@@ -16,12 +16,17 @@ class Settings(BaseSettings):
     allow_signup: bool = False
     public_url: str = "http://localhost:8000"
     project_url: str = "https://github.com/aiwithrc/aiwithrc-rag"
-    auto_model_preference: str = "claude-sonnet*,gpt-4.1*,qwen2.5*,llama3.1*"
+    auto_model_preference: str = "claude-sonnet*,gpt-4.1*,qwen3.5*,qwen2.5*,llama3.1*,gemma*"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     max_upload_mb: int = 50
     session_days: int = 30
     cookie_secure: bool = False
     web_dist: Path = Path(__file__).resolve().parent.parent.parent / "web" / "dist"
+    # Where fastembed models are cached. Defaults to DATA_DIR/models; the Docker image bakes the
+    # default model into /app/models so the first upload doesn't wait for a download.
+    model_cache_dir: Path | None = None
+    # The background job worker. Tests turn it off and drive jobs by hand.
+    start_worker: bool = True
 
     @field_validator("public_url", "project_url")
     @classmethod
@@ -41,6 +46,14 @@ class Settings(BaseSettings):
     @property
     def auto_models(self) -> list[str]:
         return [p.strip() for p in self.auto_model_preference.split(",") if p.strip()]
+
+    @property
+    def models_dir(self) -> Path:
+        return self.model_cache_dir or (self.data_dir / "models")
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.max_upload_mb * 1024 * 1024
 
     def ensure_dirs(self) -> None:
         for sub in ("", "uploads", "chroma", "models"):

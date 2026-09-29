@@ -1,16 +1,32 @@
 import { Link } from 'react-router-dom';
 
 import { Topbar } from '../components/AppShell';
-import { Card, EmptyNote, Page, PageHeader, Row, Section } from '../components/ui';
+import { Card, EmptyNote, Page, PageHeader, Pill, Row, Section } from '../components/ui';
+import { useConnections } from '../hooks/useConnections';
 
 export default function Settings() {
+  const { data: conns } = useConnections();
+
   return (
     <>
       <Topbar title="Settings" />
       <Page>
         <PageHeader title="Settings" sub="Applies to every knowledge base in this workspace." />
         <Section title="Model providers" action={<Link to="/keys" className="text-[13px] font-medium">Manage</Link>}>
-          <EmptyNote>No providers yet. Add an API Base and key on the API keys screen.</EmptyNote>
+          {conns && conns.length === 0 && (
+            <EmptyNote>
+              No providers yet. <Link to="/keys">Add an API Base and key</Link> on the API keys screen.
+            </EmptyNote>
+          )}
+          {conns && conns.length > 0 && (
+            <Card>
+              {conns.map((c) => (
+                <Row key={c.id} title={c.name} sub={<span className="font-mono">{c.api_base}</span>}>
+                  <Pill tone="ok">Connected · {c.models.length} models</Pill>
+                </Row>
+              ))}
+            </Card>
+          )}
         </Section>
         <Section title="Embeddings">
           <Card>
